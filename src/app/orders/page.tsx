@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getUserOrdersAction, updateOrderAddressAction } from '../actions/shop';
+import { cancelOrderAction } from '../actions/order';
 import { getUserSessionAction } from '../actions/auth-custom';
-import { Loader2, Package, Truck, Calendar, ArrowRight, MapPin, Edit2 } from 'lucide-react';
+import { Loader2, Package, Truck, Calendar, ArrowRight, MapPin, Edit2, XCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
 export default function UserOrdersPage() {
@@ -59,6 +60,21 @@ export default function UserOrdersPage() {
             alert(res.error || "Failed to update");
         }
     };
+
+    const handleCancelOrder = async (orderId: string) => {
+        if (!confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
+            return;
+        }
+
+        const res = await cancelOrderAction(orderId, user.userId);
+        if (res.success) {
+            alert('Order cancelled successfully. Stock has been restored.');
+            loadData();
+        } else {
+            alert(res.error || 'Failed to cancel order');
+        }
+    };
+
 
     if (loading) return <div className="min-h-screen flex items-center justify-center pt-20"><Loader2 className="animate-spin text-gray-400" /></div>;
 
@@ -139,11 +155,21 @@ export default function UserOrdersPage() {
                                             <h4 className="text-xs font-bold uppercase tracking-wide text-gray-400 flex items-center gap-2">
                                                 <MapPin size={14} /> Delivery Address
                                             </h4>
-                                            {['PENDING', 'PROCESSING'].includes(order.status) && !editingOrderId && (
-                                                <button onClick={() => handleEditAddress(order)} className="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                                                    <Edit2 size={10} /> Edit
-                                                </button>
-                                            )}
+                                            <div className="flex items-center gap-3">
+                                                {['PENDING', 'PROCESSING'].includes(order.status) && !editingOrderId && (
+                                                    <>
+                                                        <button onClick={() => handleEditAddress(order)} className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                                                            <Edit2 size={10} /> Edit
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleCancelOrder(order.id)}
+                                                            className="text-xs text-red-600 hover:underline flex items-center gap-1 font-medium"
+                                                        >
+                                                            <XCircle size={12} /> Cancel
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {editingOrderId === order.id ? (

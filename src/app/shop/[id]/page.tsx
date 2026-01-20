@@ -114,7 +114,28 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     <div>
                         <span className="text-xs font-bold tracking-[0.2em] text-primary uppercase mb-3 block">{product.category?.name} • {product.gender}</span>
                         <h1 className="font-serif text-4xl text-gray-900 mb-4">{product.name}</h1>
-                        <p className="text-2xl font-medium text-gray-900 mb-8">${Number(product.price).toFixed(2)}</p>
+                        <p className="text-2xl font-medium text-gray-900 mb-4">${Number(product.price).toFixed(2)}</p>
+
+                        {/* Average Rating */}
+                        {product.reviews && product.reviews.length > 0 && (
+                            <div className="flex items-center gap-2 mb-8">
+                                <div className="flex gap-0.5">
+                                    {[1, 2, 3, 4, 5].map((star) => {
+                                        const avgRating = product.reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / product.reviews.length;
+                                        return (
+                                            <Star
+                                                key={star}
+                                                size={16}
+                                                className={star <= Math.round(avgRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                                <span className="text-sm text-gray-600">
+                                    {(product.reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / product.reviews.length).toFixed(1)} ({product.reviews.length} {product.reviews.length === 1 ? 'review' : 'reviews'})
+                                </span>
+                            </div>
+                        )}
 
                         <p className="text-gray-600 leading-relaxed mb-8">{product.description}</p>
 
@@ -208,7 +229,18 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                             <Star key={i} size={14} className={i < review.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"} />
                                         ))}
                                     </div>
-                                    <p className="text-sm text-gray-600">{review.comment}</p>
+                                    <p className="text-sm text-gray-600 mb-3">{review.comment}</p>
+
+                                    {/* Admin Response */}
+                                    {review.adminResponse && (
+                                        <div className="mt-4 ml-6 pl-4 border-l-2 border-primary/30 bg-primary/5 p-3 rounded-r-md">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-xs font-bold text-primary uppercase tracking-wider">ASHBLOOM Response</span>
+                                                <span className="text-xs text-gray-400">• {new Date(review.respondedAt).toLocaleDateString()}</span>
+                                            </div>
+                                            <p className="text-sm text-gray-700">{review.adminResponse}</p>
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         )}

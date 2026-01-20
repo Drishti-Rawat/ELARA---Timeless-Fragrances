@@ -18,11 +18,30 @@ export async function getShopProducts(params?: { categoryId?: string, gender?: s
 
         const products = await prisma.product.findMany({
             where,
-            include: { category: true },
+            include: {
+                category: true,
+                reviews: {
+                    select: { rating: true }
+                }
+            },
             orderBy: { createdAt: 'desc' }
         });
 
-        return { success: true, products };
+        // Calculate average rating for each product
+        const productsWithRatings = products.map(product => {
+            const avgRating = product.reviews.length > 0
+                ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
+                : 0;
+
+            return {
+                ...product,
+                averageRating: avgRating,
+                reviewCount: product.reviews.length,
+                reviews: undefined // Remove reviews array from response
+            };
+        });
+
+        return { success: true, products: productsWithRatings };
 
     } catch (error) {
         console.error("Shop Fetch Error:", error);

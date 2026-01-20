@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getShopProducts } from '../actions/shop';
 import { getCategoriesAction } from '../actions/admin';
-import { Filter, Search } from 'lucide-react';
+import { Filter, Search, Star } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
 export default function ShopPage() {
@@ -149,6 +149,23 @@ export default function ShopPage() {
                                             <div className="text-center">
                                                 <h3 className="font-serif text-lg text-foreground group-hover:text-primary transition-colors">{product.name}</h3>
                                                 <p className="text-xs text-gray-500 uppercase tracking-widest mt-1 mb-2">{product.category?.name}</p>
+
+                                                {/* Rating Display */}
+                                                {(product as any).reviewCount > 0 && (
+                                                    <div className="flex items-center justify-center gap-1 mb-2">
+                                                        <div className="flex gap-0.5">
+                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                <Star
+                                                                    key={star}
+                                                                    size={12}
+                                                                    className={star <= Math.round((product as any).averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        <span className="text-xs text-gray-500">({(product as any).reviewCount})</span>
+                                                    </div>
+                                                )}
+
                                                 <p className="font-medium text-foreground">${Number(product.price).toFixed(2)}</p>
                                             </div>
                                         </Link>

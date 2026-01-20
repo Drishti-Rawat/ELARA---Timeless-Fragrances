@@ -216,6 +216,31 @@ export async function getAnalyticsDataAction(period: AnalyticsPeriod) {
             revenue: data.revenue
         })).sort((a, b) => b.revenue - a.revenue);
 
+        // Fetch Rating Analytics
+        const reviews = await prisma.review.findMany({
+            where: {
+                createdAt: {
+                    gte: startDate
+                }
+            },
+            select: {
+                rating: true
+            }
+        });
+
+        const totalReviews = reviews.length;
+        const averageRating = totalReviews > 0
+            ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
+            : 0;
+
+        const ratingDistribution = [
+            { rating: 5, count: reviews.filter(r => r.rating === 5).length },
+            { rating: 4, count: reviews.filter(r => r.rating === 4).length },
+            { rating: 3, count: reviews.filter(r => r.rating === 3).length },
+            { rating: 2, count: reviews.filter(r => r.rating === 2).length },
+            { rating: 1, count: reviews.filter(r => r.rating === 1).length },
+        ];
+
         return {
             success: true,
             totalRevenue,
@@ -227,7 +252,10 @@ export async function getAnalyticsDataAction(period: AnalyticsPeriod) {
             categoryData,
             productData,
             statusData,
-            genderData
+            genderData,
+            totalReviews,
+            averageRating,
+            ratingDistribution
         };
 
     } catch (error) {

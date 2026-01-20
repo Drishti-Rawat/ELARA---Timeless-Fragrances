@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Package, Users, ShoppingBag, LogOut, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Package, Users, ShoppingBag, LogOut, BarChart3, Star } from 'lucide-react';
 import { logoutAction } from '@/app/actions/auth-custom';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +30,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <SidebarItem href="/admin/products" icon={<ShoppingBag size={18} />} label="Products" active={pathname.startsWith('/admin/products')} />
                     <SidebarItem href="/admin/users" icon={<Users size={18} />} label="Platform Users" active={pathname.startsWith('/admin/users')} />
                     <SidebarItem href="/admin/orders" icon={<ShoppingBag size={18} />} label="Orders" active={pathname.startsWith('/admin/orders')} />
+                    <SidebarItem href="/admin/reviews" icon={<Star size={18} />} label="Reviews" active={pathname.startsWith('/admin/reviews')} />
                 </nav>
 
                 <div className="p-4 border-t border-gray-50">

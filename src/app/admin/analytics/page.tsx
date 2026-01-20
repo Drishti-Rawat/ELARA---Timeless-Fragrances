@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getAnalyticsDataAction, AnalyticsPeriod } from '@/app/actions/analytics';
-import { BarChart3, TrendingUp, DollarSign, ShoppingBag, Calendar, PieChart as PieIcon, LineChart as LineIcon, Users, AlertTriangle, Package, Info } from 'lucide-react';
+import { BarChart3, TrendingUp, DollarSign, ShoppingBag, Calendar, PieChart as PieIcon, LineChart as LineIcon, Users, AlertTriangle, Package, Info, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -360,6 +360,59 @@ export default function AnalyticsPage() {
                                         <p className="text-sm">All products are well-stocked!</p>
                                     </div>
                                 )}
+                            </div>
+                        </motion.div>
+
+                        {/* Rating Analytics */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.8 }}
+                            className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="font-bold text-gray-900 flex items-center gap-2 cursor-help" title="Customer satisfaction ratings for this period. Shows average rating and distribution across all star levels.">
+                                    <Star size={18} className="text-gray-400" /> Customer Ratings
+                                </h3>
+                            </div>
+                            <div className="space-y-4">
+                                {/* Average Rating */}
+                                <div className="text-center pb-4 border-b border-gray-100">
+                                    <div className="text-4xl font-bold text-gray-900 mb-1">
+                                        {data?.averageRating ? data.averageRating.toFixed(1) : '0.0'}
+                                    </div>
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <Star
+                                                key={star}
+                                                size={16}
+                                                className={star <= Math.round(data?.averageRating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                                            />
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-gray-500">{data?.totalReviews || 0} reviews</p>
+                                </div>
+
+                                {/* Rating Distribution */}
+                                <div className="space-y-2">
+                                    {data?.ratingDistribution?.map((item: any) => {
+                                        const percentage = data.totalReviews > 0
+                                            ? (item.count / data.totalReviews) * 100
+                                            : 0;
+                                        return (
+                                            <div key={item.rating} className="flex items-center gap-2">
+                                                <span className="text-xs text-gray-600 w-6">{item.rating}★</span>
+                                                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-yellow-400 transition-all duration-500"
+                                                        style={{ width: `${percentage}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-xs text-gray-500 w-8 text-right">{item.count}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </motion.div>
 

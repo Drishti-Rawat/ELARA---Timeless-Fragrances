@@ -163,5 +163,14 @@ export async function logoutAction() {
 export async function getUserSessionAction() {
     const session = await getSession();
     if (!session) return null;
-    return { userId: session.userId, role: session.role };
+
+    // Fetch fresh user data
+    const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { id: true, role: true, name: true, email: true }
+    });
+
+    if (!user) return null;
+
+    return { userId: user.id, role: user.role, name: user.name, email: user.email };
 }
