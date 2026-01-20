@@ -2,11 +2,15 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getSession } from "@/lib/session";
 
 // --- Categories ---
 
 export async function createCategoryAction(formData: FormData) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
+
         const name = formData.get('name') as string;
         // Image handling would typically involve uploading to a storage service (S3/Supabase Storage)
         // For now we will accept a URL string or leave it blank
@@ -41,6 +45,9 @@ export async function getCategoriesAction() {
 
 export async function createProductAction(formData: FormData) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
+
         const name = formData.get('name') as string;
         const description = formData.get('description') as string;
         const price = parseFloat(formData.get('price') as string);
@@ -78,6 +85,9 @@ export async function createProductAction(formData: FormData) {
 
 export async function getProductsAction() {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
+
         const products = await prisma.product.findMany({
             include: { category: true },
             orderBy: { createdAt: 'desc' }
@@ -92,6 +102,9 @@ export async function getProductsAction() {
 
 export async function getUsersAction() {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
+
         const users = await prisma.user.findMany({
             where: {
                 role: { not: 'ADMIN' }
@@ -110,6 +123,9 @@ export async function getUsersAction() {
 
 export async function getOrdersAction() {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
+
         const orders = await prisma.order.findMany({
             include: {
                 user: { select: { name: true, email: true } },
@@ -126,6 +142,9 @@ export async function getOrdersAction() {
 
 export async function updateOrderStatusAction(orderId: string, status: string, trackingNumber?: string) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
+
         const updateData: any = { status };
 
         // Auto-generate tracking number if shipping and not provided

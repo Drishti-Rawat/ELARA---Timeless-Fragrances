@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getSession } from "@/lib/session";
 
 export async function getShopProducts(params?: {
     categoryId?: string,
@@ -102,8 +103,12 @@ export async function getProductDetails(id: string) {
     }
 }
 
-export async function addToCartAction(userId: string, productId: string, quantity: number) {
+export async function addToCartAction(productId: string, quantity: number) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
         // Find or create cart
         let cart = await prisma.cart.findUnique({ where: { userId } });
         if (!cart) {
@@ -133,8 +138,12 @@ export async function addToCartAction(userId: string, productId: string, quantit
     }
 }
 
-export async function toggleWishlistAction(userId: string, productId: string) {
+export async function toggleWishlistAction(productId: string) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
         let wishlist = await prisma.wishlist.findUnique({ where: { userId } });
         if (!wishlist) {
             wishlist = await prisma.wishlist.create({ data: { userId } });
@@ -158,8 +167,12 @@ export async function toggleWishlistAction(userId: string, productId: string) {
     }
 }
 
-export async function submitReviewAction(userId: string, productId: string, rating: number, comment: string) {
+export async function submitReviewAction(productId: string, rating: number, comment: string) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
         await prisma.review.create({
             data: { userId, productId, rating, comment }
         });
@@ -170,8 +183,12 @@ export async function submitReviewAction(userId: string, productId: string, rati
     }
 }
 
-export async function getCartAction(userId: string) {
+export async function getCartAction() {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
         const cart = await prisma.cart.findUnique({
             where: { userId },
             include: {
@@ -205,7 +222,6 @@ export async function updateCartItemAction(itemId: string, quantity: number) {
 }
 
 export async function placeOrderAction(
-    userId: string,
     total: number,
     items: any[],
     deliveryAddress: any,
@@ -214,6 +230,9 @@ export async function placeOrderAction(
     discount?: number
 ) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
         // Auto-generate tracking number
         const timestamp = Date.now().toString().slice(-6);
         const randomSuffix = Math.floor(1000 + Math.random() * 9000); // 4 digit random
@@ -303,8 +322,12 @@ export async function placeOrderAction(
     }
 }
 
-export async function updateOrderAddressAction(orderId: string, userId: string, newAddress: any) {
+export async function updateOrderAddressAction(orderId: string, newAddress: any) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
         const order = await prisma.order.findUnique({ where: { id: orderId } });
         if (!order || order.userId !== userId) {
             return { success: false, error: "Order not found" };
@@ -326,8 +349,12 @@ export async function updateOrderAddressAction(orderId: string, userId: string, 
     }
 }
 
-export async function getWishlistAction(userId: string, page: number = 1, limit: number = 9) {
+export async function getWishlistAction(page: number = 1, limit: number = 9) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
         const skip = (page - 1) * limit;
 
         const wishlist = await prisma.wishlist.findUnique({
@@ -358,8 +385,12 @@ export async function getWishlistAction(userId: string, page: number = 1, limit:
     }
 }
 
-export async function getUserOrdersAction(userId: string) {
+export async function getUserOrdersAction() {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
         const orders = await prisma.order.findMany({
             where: { userId },
             include: {

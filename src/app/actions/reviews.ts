@@ -1,21 +1,23 @@
-'use server';
-
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
 
 // Add a review (users can only review products they've purchased)
 export async function addReviewAction(data: {
-    userId: string;
     productId: string;
     rating: number;
     comment?: string;
 }) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
         // Check if user has purchased this product
         const hasPurchased = await prisma.orderItem.findFirst({
             where: {
                 productId: data.productId,
                 order: {
-                    userId: data.userId,
+                    userId: userId,
                     status: 'DELIVERED'
                 }
             }
@@ -28,7 +30,7 @@ export async function addReviewAction(data: {
         // Check if user already reviewed this product
         const existingReview = await prisma.review.findFirst({
             where: {
-                userId: data.userId,
+                userId: userId,
                 productId: data.productId
             }
         });
@@ -39,7 +41,7 @@ export async function addReviewAction(data: {
 
         const review = await prisma.review.create({
             data: {
-                userId: data.userId,
+                userId: userId,
                 productId: data.productId,
                 rating: data.rating,
                 comment: data.comment
@@ -91,6 +93,9 @@ export async function getProductReviewsAction(productId: string) {
 // Admin: Get all reviews
 export async function getAllReviewsAction() {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
+
         const reviews = await prisma.review.findMany({
             include: {
                 user: {
@@ -113,6 +118,9 @@ export async function getAllReviewsAction() {
 // Admin: Reply to a review (only once)
 export async function replyToReviewAction(reviewId: string, adminResponse: string) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
+
         const review = await prisma.review.findUnique({
             where: { id: reviewId }
         });

@@ -24,7 +24,7 @@ export default function WishlistPage() {
         const session = await getUserSessionAction();
         setUser(session);
         if (session) {
-            const res = await getWishlistAction(session.userId, 1, 9);
+            const res = await getWishlistAction(1, 9);
             if (res.success) {
                 setItems(res.items || []);
                 setHasMore((res.items?.length || 0) === 9);
@@ -39,7 +39,7 @@ export default function WishlistPage() {
 
         setIsFetchingMore(true);
         const nextPage = page + 1;
-        const res = await getWishlistAction(user.userId, nextPage, 9);
+        const res = await getWishlistAction(nextPage, 9);
 
         if (res.success) {
             const newItems = res.items || [];
@@ -77,7 +77,7 @@ export default function WishlistPage() {
         if (!user) return;
         // Optimistic update
         setItems((prev: any) => prev.filter((item: any) => item.productId !== productId));
-        await toggleWishlistAction(user.userId, productId);
+        await toggleWishlistAction(productId);
         // We don't necessarily need to reload everything, but maybe sync once in a while
     };
 

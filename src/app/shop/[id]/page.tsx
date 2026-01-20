@@ -49,7 +49,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     const handleAddToCart = async () => {
         if (!user) return router.push('/login');
         setAddingToCart(true);
-        const res = await addToCartAction(user.userId, id, quantity);
+        const res = await addToCartAction(id, quantity);
         setAddingToCart(false);
         if (res.success) {
             alert("Added to cart");
@@ -62,7 +62,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     const handleWishlist = async () => {
         if (!user) return router.push('/login');
         setWishlistLoading(true);
-        const res = await toggleWishlistAction(user.userId, id);
+        const res = await toggleWishlistAction(id);
         if (res.success) {
             setIsInWishlist(!!res.added); // Update local state based on server response
         }
@@ -74,7 +74,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         if (!user) return router.push('/login');
 
         setSubmittingReview(true);
-        const res = await submitReviewAction(user.userId, id, reviewRating, reviewComment);
+        const res = await submitReviewAction(id, reviewRating, reviewComment);
         if (res.success) {
             // Refresh product data to see new review
             const updated = await getProductDetails(id);

@@ -1,9 +1,12 @@
-'use server';
-
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
 
-export async function cancelOrderAction(orderId: string, userId: string) {
+export async function cancelOrderAction(orderId: string) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
         // Verify order belongs to user
         const order = await prisma.order.findFirst({
             where: {

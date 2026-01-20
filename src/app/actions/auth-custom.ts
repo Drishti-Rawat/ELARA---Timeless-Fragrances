@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import nodemailer from 'nodemailer';
 import { createSession, deleteSession, getSession } from "@/lib/session";
 import { createHash } from 'crypto';
+import { otpEmailRatelimit, otpIpRatelimit } from "@/lib/rate-limit";
+import { headers } from 'next/headers';
 
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587');
@@ -24,14 +26,29 @@ const transporter = nodemailer.createTransport({
 
 export async function sendOtpAction(email: string) {
     try {
-        // 1. Generate 6-digit OTP
+        // 1. Rate Limiting
+        const ip = (await headers()).get('x-forwarded-for') || '127.0.0.1';
+
+        const [ipResult, emailResult] = await Promise.all([
+            otpIpRatelimit.limit(ip),
+            otpEmailRatelimit.limit(email)
+        ]);
+
+        if (!ipResult.success || !emailResult.success) {
+            return {
+                success: false,
+                error: `Too many requests. Please try again later.`
+            };
+        }
+
+        // 2. Generate 6-digit OTP
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
 
-        // 2. Hash OTP for secure storage
+        // 3. Hash OTP for secure storage
         const hashedOtp = createHash('sha256').update(otpCode).digest('hex');
 
-        // 2. Store Hashed OTP in DB
+        // 4. Store Hashed OTP in DB
         await prisma.otp.create({
             data: {
                 email,
@@ -40,7 +57,7 @@ export async function sendOtpAction(email: string) {
             },
         });
 
-        // 3. Send Email (Try/Catch in case SMTP is not configured)
+        // 5. Send Email (Try/Catch in case SMTP is not configured)
         try {
             await transporter.sendMail({
                 from: SMTP_FROM,

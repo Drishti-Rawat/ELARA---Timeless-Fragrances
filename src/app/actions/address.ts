@@ -1,10 +1,13 @@
-'use server';
-
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getSession } from "@/lib/session";
 
-export async function getUserAddressesAction(userId: string) {
+export async function getUserAddressesAction() {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
         const addresses = await prisma.address.findMany({
             where: { userId },
             orderBy: { isDefault: 'desc' } // Default first
@@ -15,8 +18,12 @@ export async function getUserAddressesAction(userId: string) {
     }
 }
 
-export async function addAddressAction(userId: string, data: any) {
+export async function addAddressAction(data: any) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
         // If this is the first address or marked default, uncheck others
         if (data.isDefault) {
             await prisma.address.updateMany({
@@ -51,8 +58,12 @@ export async function addAddressAction(userId: string, data: any) {
     }
 }
 
-export async function deleteAddressAction(addressId: string, userId: string) {
+export async function deleteAddressAction(addressId: string) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
         await prisma.address.delete({
             where: { id: addressId, userId }
         });

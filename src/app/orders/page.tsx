@@ -22,7 +22,7 @@ export default function UserOrdersPage() {
         const session = await getUserSessionAction();
         setUser(session);
         if (session) {
-            const res = await getUserOrdersAction(session.userId);
+            const res = await getUserOrdersAction();
             if (res.success) setOrders(res.orders || []);
         }
         setLoading(false);
@@ -54,7 +54,7 @@ export default function UserOrdersPage() {
             // retaining old structure would require parsing, skipping for brevity
         };
 
-        const res = await updateOrderAddressAction(orderId, user.userId, updatedAddr);
+        const res = await updateOrderAddressAction(orderId, updatedAddr);
         if (res.success) {
             setEditingOrderId(null);
             loadData();
@@ -68,7 +68,7 @@ export default function UserOrdersPage() {
             return;
         }
 
-        const res = await cancelOrderAction(orderId, user.userId);
+        const res = await cancelOrderAction(orderId);
         if (res.success) {
             alert('Order cancelled successfully. Stock has been restored.');
             loadData();
@@ -82,7 +82,7 @@ export default function UserOrdersPage() {
     const getInvoice = async (orderId: string) => {
         if (invoices[orderId]) return invoices[orderId];
 
-        const res = await generateInvoiceDataAction(orderId, user.userId);
+        const res = await generateInvoiceDataAction(orderId);
         if (res.success && res.invoice) {
             setInvoices(prev => ({ ...prev, [orderId]: res.invoice }));
             return res.invoice;

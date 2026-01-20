@@ -1,6 +1,6 @@
-'use server';
-
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
+import { couponRatelimit } from "@/lib/rate-limit";
 
 // Admin: Create a new coupon
 export async function createCouponAction(data: {
@@ -14,6 +14,9 @@ export async function createCouponAction(data: {
     expiresAt?: Date;
 }) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
+
         const coupon = await prisma.coupon.create({
             data: {
                 code: data.code.toUpperCase(),
@@ -37,6 +40,9 @@ export async function createCouponAction(data: {
 // Admin: Get all coupons
 export async function getAllCouponsAction() {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
+
         const coupons = await prisma.coupon.findMany({
             orderBy: { createdAt: 'desc' }
         });
@@ -51,6 +57,9 @@ export async function getAllCouponsAction() {
 // Admin: Toggle coupon active status
 export async function toggleCouponStatusAction(id: string) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
+
         const coupon = await prisma.coupon.findUnique({ where: { id } });
         if (!coupon) return { success: false, error: "Coupon not found" };
 
@@ -69,6 +78,9 @@ export async function toggleCouponStatusAction(id: string) {
 // Admin: Delete coupon
 export async function deleteCouponAction(id: string) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
+
         await prisma.coupon.delete({ where: { id } });
         return { success: true };
     } catch (error) {
@@ -81,10 +93,22 @@ export async function deleteCouponAction(id: string) {
 export async function validateCouponAction(
     code: string,
     orderTotal: number,
-    userId: string,
     cartItems?: any[] // Pass cart items to check for sale products
 ) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+        const userId = session.userId;
+
+        // Rate Limiting: 10 attempts per minute per user/session
+        const { success } = await couponRatelimit.limit(userId);
+        if (!success) {
+            return {
+                success: false,
+                error: `Too many attempts. Please try again later.`
+            };
+        }
+
         const coupon = await prisma.coupon.findUnique({
             where: { code: code.toUpperCase() },
             include: {

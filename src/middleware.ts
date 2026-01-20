@@ -18,7 +18,15 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    // 2. Redirect logged-in users away from Login page
+    // 2. Authenticated Routes Protection
+    const authRoutes = ['/cart', '/wishlist', '/orders'];
+    if (authRoutes.some(route => pathname.startsWith(route))) {
+        if (!session) {
+            return NextResponse.redirect(new URL('/login', request.url));
+        }
+    }
+
+    // 3. Redirect logged-in users away from Login page
     if (pathname === '/login' && session) {
         if (session.role === 'ADMIN') {
             return NextResponse.redirect(new URL('/admin', request.url));
@@ -30,5 +38,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/admin/:path*', '/login'],
+    matcher: ['/admin/:path*', '/login', '/cart', '/wishlist', '/orders'],
 };

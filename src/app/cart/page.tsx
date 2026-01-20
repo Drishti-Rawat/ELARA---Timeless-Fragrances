@@ -45,8 +45,8 @@ export default function CartPage() {
         setUser(session);
         if (session) {
             const [cartRes, addrRes] = await Promise.all([
-                getCartAction(session.userId),
-                getUserAddressesAction(session.userId)
+                getCartAction(),
+                getUserAddressesAction()
             ]);
 
             if (cartRes.success) setCart(cartRes.cart);
@@ -68,7 +68,7 @@ export default function CartPage() {
     const handleUpdateQuantity = async (itemId: string, newQty: number) => {
         await updateCartItemAction(itemId, newQty);
         // Refresh cart only
-        const res = await getCartAction(user.userId);
+        const res = await getCartAction();
         if (res.success) setCart(res.cart);
     };
 
@@ -77,10 +77,10 @@ export default function CartPage() {
         if (!user) return;
         setAddingAddress(true);
 
-        const res: any = await addAddressAction(user.userId, newAddress);
+        const res: any = await addAddressAction(newAddress);
         if (res.success) {
             // Refresh addresses
-            const addrRes = await getUserAddressesAction(user.userId);
+            const addrRes = await getUserAddressesAction();
             if (addrRes.success) {
                 setAddresses(addrRes.addresses || []);
                 if (res.address) setSelectedAddressId(res.address.id); // Select the new one
@@ -97,9 +97,9 @@ export default function CartPage() {
     const handleDeleteAddress = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!confirm('Are you sure you want to delete this address?')) return;
-        await deleteAddressAction(id, user.userId);
+        await deleteAddressAction(id);
 
-        const addrRes = await getUserAddressesAction(user.userId);
+        const addrRes = await getUserAddressesAction();
         if (addrRes.success) {
             const updated = addrRes.addresses || [];
             setAddresses(updated);
@@ -133,7 +133,6 @@ export default function CartPage() {
 
         // Pass snapshot of address and coupon info
         const res = await placeOrderAction(
-            user.userId,
             total,
             cart.items,
             selectedAddr,
@@ -168,7 +167,7 @@ export default function CartPage() {
             }
             return sum + (price * item.quantity);
         }, 0);
-        const res = await validateCouponAction(couponCode, subtotal, user.userId, cart.items);
+        const res = await validateCouponAction(couponCode, subtotal, cart.items);
 
         if (res.success && res.coupon) {
             setAppliedCoupon(res.coupon);
