@@ -5,42 +5,83 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getWishlistAction, toggleWishlistAction } from '../actions/shop';
 import { getUserSessionAction } from '../actions/auth-custom';
-import { Loader2, Trash2, Heart, ShoppingBag } from 'lucide-react';
+import { Loader2, Trash2, Heart } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
 export default function WishlistPage() {
     const router = useRouter();
-    const [wishlist, setWishlist] = useState<any>(null);
+    const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
 
-    const loadData = async () => {
+    // Pagination states
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
+
+    const loadInitialData = async () => {
         setLoading(true);
         const session = await getUserSessionAction();
         setUser(session);
         if (session) {
-            const res = await getWishlistAction(session.userId);
-            if (res.success) setWishlist(res.wishlist);
+            const res = await getWishlistAction(session.userId, 1, 9);
+            if (res.success) {
+                setItems(res.items || []);
+                setHasMore((res.items?.length || 0) === 9);
+                setPage(1);
+            }
         }
         setLoading(false);
     };
 
+    const loadMore = async () => {
+        if (isFetchingMore || !hasMore || !user) return;
+
+        setIsFetchingMore(true);
+        const nextPage = page + 1;
+        const res = await getWishlistAction(user.userId, nextPage, 9);
+
+        if (res.success) {
+            const newItems = res.items || [];
+            if (newItems.length > 0) {
+                setItems(prev => [...prev, ...newItems]);
+                setPage(nextPage);
+            }
+            setHasMore(newItems.length === 9);
+        }
+        setIsFetchingMore(false);
+    };
+
     useEffect(() => {
-        loadData();
+        loadInitialData();
     }, []);
+
+    // Intersection Observer for Infinite Scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !loading && !isFetchingMore) {
+                    loadMore();
+                }
+            },
+            { threshold: 0.1, rootMargin: '100px' }
+        );
+
+        const target = document.querySelector('#scroll-trigger');
+        if (target) observer.observe(target);
+
+        return () => observer.disconnect();
+    }, [hasMore, loading, isFetchingMore, page, user]);
 
     const handleRemove = async (productId: string) => {
         if (!user) return;
         // Optimistic update
-        setWishlist((prev: any) => ({
-            ...prev,
-            items: prev.items.filter((item: any) => item.productId !== productId)
-        }));
+        setItems((prev: any) => prev.filter((item: any) => item.productId !== productId));
         await toggleWishlistAction(user.userId, productId);
-        loadData(); // Sync
+        // We don't necessarily need to reload everything, but maybe sync once in a while
     };
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center pt-20"><Loader2 className="animate-spin text-gray-400" /></div>;
+    if (loading) return <div className="min-h-screen flex items-center justify-center pt-20"><Loader2 className="animate-spin text-gray-400" size={32} /></div>;
 
     if (!user) {
         return (
@@ -55,7 +96,7 @@ export default function WishlistPage() {
         );
     }
 
-    if (!wishlist || !wishlist.items || wishlist.items.length === 0) {
+    if (!loading && items.length === 0) {
         return (
             <div className="min-h-screen bg-white">
                 <Navbar />
@@ -75,12 +116,15 @@ export default function WishlistPage() {
         <div className="min-h-screen bg-white pt-24 pb-20 px-4">
             <Navbar />
             <div className="container mx-auto max-w-5xl">
-                <h1 className="font-serif text-3xl mb-12 flex items-center gap-3">
-                    <Heart size={28} className="text-red-500 fill-red-500" /> Wishlist
-                </h1>
+                <div className="flex items-center justify-between mb-12">
+                    <h1 className="font-serif text-3xl flex items-center gap-3">
+                        <Heart size={28} className="text-red-500 fill-red-500" /> Wishlist
+                    </h1>
+                    <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">{items.length} items saved</span>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {wishlist.items.map((item: any) => (
+                    {items.map((item: any) => (
                         <div key={item.id} className="group relative">
                             <div className="aspect-3/4 bg-gray-50 mb-4 overflow-hidden relative rounded-sm">
                                 {item.product.images[0] ? (
@@ -108,6 +152,22 @@ export default function WishlistPage() {
                             </Link>
                         </div>
                     ))}
+                </div>
+
+                {/* Scroll Trigger */}
+                <div id="scroll-trigger" className="w-full h-20 flex items-center justify-center mt-12">
+                    {isFetchingMore && (
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Unveiling more favorites...</span>
+                        </div>
+                    )}
+                    {!hasMore && items.length > 0 && (
+                        <div className="flex flex-col items-center gap-2 opacity-40">
+                            <div className="h-px w-24 bg-gray-200" />
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">End of your wishlist</span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

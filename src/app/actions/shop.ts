@@ -3,8 +3,20 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-export async function getShopProducts(params?: { categoryId?: string, gender?: string, search?: string }) {
+export async function getShopProducts(params?: {
+    categoryId?: string,
+    gender?: string,
+    search?: string,
+    minPrice?: number,
+    maxPrice?: number,
+    page?: number,
+    limit?: number
+}) {
     try {
+        const page = params?.page || 1;
+        const limit = params?.limit || 9;
+        const skip = (page - 1) * limit;
+
         const where: any = { isArchived: false };
 
         if (params?.categoryId) where.categoryId = params.categoryId;
@@ -16,6 +28,12 @@ export async function getShopProducts(params?: { categoryId?: string, gender?: s
             ];
         }
 
+        if (params?.minPrice !== undefined || params?.maxPrice !== undefined) {
+            where.price = {};
+            if (params.minPrice !== undefined) where.price.gte = params.minPrice;
+            if (params.maxPrice !== undefined) where.price.lte = params.maxPrice;
+        }
+
         const products = await prisma.product.findMany({
             where,
             include: {
@@ -24,7 +42,9 @@ export async function getShopProducts(params?: { categoryId?: string, gender?: s
                     select: { rating: true }
                 }
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'desc' },
+            skip,
+            take: limit
         });
 
         // Calculate average rating for each product
@@ -306,18 +326,34 @@ export async function updateOrderAddressAction(orderId: string, userId: string, 
     }
 }
 
-export async function getWishlistAction(userId: string) {
+export async function getWishlistAction(userId: string, page: number = 1, limit: number = 9) {
     try {
+        const skip = (page - 1) * limit;
+
         const wishlist = await prisma.wishlist.findUnique({
             where: { userId },
             include: {
+                _count: {
+                    select: { items: true }
+                },
                 items: {
-                    include: { product: true }
+                    include: { product: true },
+                    skip,
+                    take: limit
                 }
             }
         });
-        return { success: true, wishlist };
+
+        if (!wishlist) return { success: true, items: [], totalCount: 0, totalPages: 0 };
+
+        return {
+            success: true,
+            items: wishlist.items,
+            totalCount: wishlist._count.items,
+            totalPages: Math.ceil(wishlist._count.items / limit)
+        };
     } catch (error) {
+        console.error("Wishlist fetch error:", error);
         return { success: false, error: "Failed to load wishlist" };
     }
 }
