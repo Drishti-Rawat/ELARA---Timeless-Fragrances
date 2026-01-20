@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-serif" });
 
 export const metadata: Metadata = {
-  title: "ELARA | Timeless Fragrances",
+  title: "ASHBLOOM | Timeless Fragrances",
   description: "Discover a collection of luminous, artisanal fragrances designed to illuminate your presence.",
 };
 

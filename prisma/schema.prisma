@@ -52,6 +52,7 @@ model Product {
   concentration String?  // e.g. "Parfum"
   isFeatured    Boolean  @default(false)
   isArchived    Boolean  @default(false)
+  gender        Gender   @default(UNISEX)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -61,6 +62,12 @@ model Product {
   cartItems     CartItem[]
   wishlistItems WishlistItem[]
   reviews       Review[]
+}
+
+enum Gender {
+  MEN
+  WOMEN
+  UNISEX
 }
 
 model Category {
