@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { getUserOrdersAction, updateOrderAddressAction } from '../actions/shop';
 import { cancelOrderAction } from '../actions/order';
 import { getUserSessionAction } from '../actions/auth-custom';
-import { Loader2, Package, Truck, Calendar, ArrowRight, MapPin, Edit2, XCircle } from 'lucide-react';
+import { Loader2, Package, Truck, Calendar, ArrowRight, MapPin, Edit2, XCircle, Clock, CheckCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
 export default function UserOrdersPage() {
@@ -137,6 +137,81 @@ export default function UserOrdersPage() {
 
                                 {/* Order Items & Details */}
                                 <div className="p-6">
+                                    {/* Order Tracking Timeline */}
+                                    <div className="mb-6 pb-6 border-b border-gray-100">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Order Status</h4>
+                                        <div className="relative">
+                                            {/* Progress Line */}
+                                            <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200">
+                                                <div
+                                                    className="h-full bg-primary transition-all duration-500"
+                                                    style={{
+                                                        width: order.status === 'PENDING' ? '0%' :
+                                                            order.status === 'PROCESSING' ? '33%' :
+                                                                order.status === 'SHIPPED' ? '66%' :
+                                                                    order.status === 'DELIVERED' ? '100%' :
+                                                                        order.status === 'CANCELLED' ? '0%' : '0%'
+                                                    }}
+                                                />
+                                            </div>
+
+                                            {/* Timeline Steps */}
+                                            <div className="relative flex justify-between">
+                                                {/* Pending */}
+                                                <div className="flex flex-col items-center">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(order.status)
+                                                        ? 'bg-primary border-primary text-white'
+                                                        : 'bg-white border-gray-300 text-gray-400'
+                                                        }`}>
+                                                        <Package size={16} />
+                                                    </div>
+                                                    <p className="text-xs mt-2 font-medium text-gray-600">Pending</p>
+                                                </div>
+
+                                                {/* Processing */}
+                                                <div className="flex flex-col items-center">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${['PROCESSING', 'SHIPPED', 'DELIVERED'].includes(order.status)
+                                                        ? 'bg-primary border-primary text-white'
+                                                        : 'bg-white border-gray-300 text-gray-400'
+                                                        }`}>
+                                                        <Clock size={16} />
+                                                    </div>
+                                                    <p className="text-xs mt-2 font-medium text-gray-600">Processing</p>
+                                                </div>
+
+                                                {/* Shipped */}
+                                                <div className="flex flex-col items-center">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${['SHIPPED', 'DELIVERED'].includes(order.status)
+                                                        ? 'bg-primary border-primary text-white'
+                                                        : 'bg-white border-gray-300 text-gray-400'
+                                                        }`}>
+                                                        <Truck size={16} />
+                                                    </div>
+                                                    <p className="text-xs mt-2 font-medium text-gray-600">Shipped</p>
+                                                </div>
+
+                                                {/* Delivered */}
+                                                <div className="flex flex-col items-center">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${order.status === 'DELIVERED'
+                                                        ? 'bg-green-500 border-green-500 text-white'
+                                                        : 'bg-white border-gray-300 text-gray-400'
+                                                        }`}>
+                                                        <CheckCircle size={16} />
+                                                    </div>
+                                                    <p className="text-xs mt-2 font-medium text-gray-600">Delivered</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Cancelled Status */}
+                                            {order.status === 'CANCELLED' && (
+                                                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
+                                                    <XCircle className="text-red-600" size={18} />
+                                                    <p className="text-sm font-medium text-red-700">This order has been cancelled</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     {order.trackingNumber && (
                                         <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-md flex items-start gap-3">
                                             <Truck className="text-blue-600 shrink-0 mt-0.5" size={20} />
