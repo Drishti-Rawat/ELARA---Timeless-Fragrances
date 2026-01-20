@@ -179,7 +179,22 @@ export default function ProductsPage() {
                                                 {prod.category?.name || 'Uncategorized'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 font-medium text-gray-900">${Number(prod.price).toFixed(2)}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className={`font-medium ${prod.isOnSale ? 'text-red-600' : 'text-gray-900'}`}>
+                                                    ${prod.isOnSale ? (Number(prod.price) * (1 - prod.salePercentage / 100)).toFixed(2) : Number(prod.price).toFixed(2)}
+                                                </span>
+                                                {prod.isOnSale && (
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] text-gray-400 line-through">${Number(prod.price).toFixed(2)}</span>
+                                                        <span className="text-[10px] font-bold text-red-500 uppercase">-{prod.salePercentage}% Sale</span>
+                                                        {prod.saleEndDate && (
+                                                            <span className="text-[10px] text-amber-600">Ends: {new Date(prod.saleEndDate).toLocaleDateString()}</span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${prod.stock > 10 ? 'bg-green-100 text-green-800' :
                                                 prod.stock > 0 ? 'bg-yellow-100 text-yellow-800' :

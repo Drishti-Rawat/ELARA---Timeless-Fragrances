@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getUserOrdersAction, updateOrderAddressAction } from '../actions/shop';
 import { cancelOrderAction } from '../actions/order';
+import { generateInvoiceDataAction } from '../actions/invoice';
 import { getUserSessionAction } from '../actions/auth-custom';
 import { Loader2, Package, Truck, Calendar, ArrowRight, MapPin, Edit2, XCircle, Clock, CheckCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import InvoiceButton from '@/components/InvoiceButton';
 
 export default function UserOrdersPage() {
     const [orders, setOrders] = useState<any[]>([]);
@@ -75,6 +77,19 @@ export default function UserOrdersPage() {
         }
     };
 
+    const [invoices, setInvoices] = useState<Record<string, any>>({});
+
+    const getInvoice = async (orderId: string) => {
+        if (invoices[orderId]) return invoices[orderId];
+
+        const res = await generateInvoiceDataAction(orderId, user.userId);
+        if (res.success && res.invoice) {
+            setInvoices(prev => ({ ...prev, [orderId]: res.invoice }));
+            return res.invoice;
+        }
+        return null;
+    };
+
 
     if (loading) return <div className="min-h-screen flex items-center justify-center pt-20"><Loader2 className="animate-spin text-gray-400" /></div>;
 
@@ -123,7 +138,7 @@ export default function UserOrdersPage() {
                                     <div className="flex items-center gap-4">
                                         <div className="text-right">
                                             <p className="text-xs text-gray-500 uppercase tracking-wider">Total</p>
-                                            <p className="font-bold text-gray-900">${Number(order.total).toFixed(2)}</p>
+                                            <p className="font-bold text-gray-900">₹{Number(order.total).toFixed(2)}</p>
                                         </div>
                                         <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${order.status === 'DELIVERED' ? 'bg-green-100 text-green-700 border-green-200' :
                                             order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-700 border-blue-200' :
@@ -132,6 +147,18 @@ export default function UserOrdersPage() {
                                             }`}>
                                             {order.status}
                                         </div>
+
+                                        {/* Invoice Download Button */}
+                                        {invoices[order.id] ? (
+                                            <InvoiceButton invoice={invoices[order.id]} />
+                                        ) : (
+                                            <button
+                                                onClick={async () => await getInvoice(order.id)}
+                                                className="text-sm text-primary hover:underline font-medium"
+                                            >
+                                                Load Invoice
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 

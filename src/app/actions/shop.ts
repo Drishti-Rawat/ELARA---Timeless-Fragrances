@@ -184,7 +184,15 @@ export async function updateCartItemAction(itemId: string, quantity: number) {
     }
 }
 
-export async function placeOrderAction(userId: string, total: number, items: any[], deliveryAddress: any) {
+export async function placeOrderAction(
+    userId: string,
+    total: number,
+    items: any[],
+    deliveryAddress: any,
+    couponCode?: string,
+    subtotal?: number,
+    discount?: number
+) {
     try {
         // Auto-generate tracking number
         const timestamp = Date.now().toString().slice(-6);
@@ -194,19 +202,40 @@ export async function placeOrderAction(userId: string, total: number, items: any
         // 1. Transaction to ensure stock and order integrity
         await prisma.$transaction(async (tx) => {
             // Create Order
+            const orderItems = [];
+            for (const item of items) {
+                // Fetch fresh product data to get current price and sale status
+                const product = await tx.product.findUnique({
+                    where: { id: item.productId },
+                    select: { price: true, isOnSale: true, salePercentage: true }
+                });
+
+                if (!product) throw new Error(`Product ${item.productId} not found`);
+
+                let finalPrice = Number(product.price);
+                if (product.isOnSale) {
+                    finalPrice = finalPrice * (1 - product.salePercentage / 100);
+                }
+
+                orderItems.push({
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    price: finalPrice
+                });
+            }
+
             const order = await tx.order.create({
                 data: {
                     userId,
-                    total: total, // Matches schema 'total'
+                    subtotal: subtotal || total,
+                    discount: discount || 0,
+                    total: total,
+                    couponCode: couponCode || null,
                     status: 'PENDING',
                     trackingNumber: trackingNumber,
                     deliveryAddress: deliveryAddress, // Store snapshot
                     items: {
-                        create: items.map((item: any) => ({
-                            productId: item.productId,
-                            quantity: item.quantity,
-                            price: item.product.price // Snapshot price
-                        }))
+                        create: orderItems
                     }
                 }
             });
@@ -223,6 +252,24 @@ export async function placeOrderAction(userId: string, total: number, items: any
             const cart = await tx.cart.findUnique({ where: { userId } });
             if (cart) {
                 await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+            }
+
+            // Track coupon usage if coupon was applied
+            if (couponCode) {
+                // Increment global usage count
+                await tx.coupon.update({
+                    where: { code: couponCode },
+                    data: { usedCount: { increment: 1 } }
+                });
+
+                // Create usage record for this user
+                await tx.couponUsage.create({
+                    data: {
+                        couponId: (await tx.coupon.findUnique({ where: { code: couponCode }, select: { id: true } }))!.id,
+                        userId,
+                        orderId: order.id
+                    }
+                });
             }
         });
 

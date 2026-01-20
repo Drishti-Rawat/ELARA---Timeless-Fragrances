@@ -114,7 +114,37 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     <div>
                         <span className="text-xs font-bold tracking-[0.2em] text-primary uppercase mb-3 block">{product.category?.name} • {product.gender}</span>
                         <h1 className="font-serif text-4xl text-gray-900 mb-4">{product.name}</h1>
-                        <p className="text-2xl font-medium text-gray-900 mb-4">${Number(product.price).toFixed(2)}</p>
+
+                        <div className="flex items-center gap-4 mb-6">
+                            {product.isOnSale ? (
+                                <>
+                                    <span className="text-3xl font-medium text-red-600">
+                                        ${(Number(product.price) * (1 - product.salePercentage / 100)).toFixed(2)}
+                                    </span>
+                                    <span className="text-xl text-gray-400 line-through">
+                                        ${Number(product.price).toFixed(2)}
+                                    </span>
+                                    <span className="bg-red-600 text-white px-2 py-1 text-xs font-bold uppercase rounded-sm">
+                                        -{product.salePercentage}%
+                                    </span>
+                                </>
+                            ) : (
+                                <p className="text-3xl font-medium text-gray-900">${Number(product.price).toFixed(2)}</p>
+                            )}
+                        </div>
+
+                        {/* Sale End Date Notice */}
+                        {product.isOnSale && product.saleEndDate && (
+                            <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-sm inline-block">
+                                <p className="text-xs font-bold text-red-700 uppercase tracking-widest flex items-center gap-2">
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                    </span>
+                                    Sale ends {new Date(product.saleEndDate).toLocaleDateString()} at {new Date(product.saleEndDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                            </div>
+                        )}
 
                         {/* Average Rating */}
                         {product.reviews && product.reviews.length > 0 && (

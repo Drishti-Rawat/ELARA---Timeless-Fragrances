@@ -126,50 +126,75 @@ export default function ShopPage() {
                                 </div>
                             ) : products.length > 0 ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                                    {products.map(product => (
-                                        <Link href={`./shop/${product.id}`} key={product.id} className="group">
-                                            <div className="relative aspect-3/4 overflow-hidden bg-white mb-4 rounded-sm">
-                                                {product.images[0] ? (
-                                                    <img
-                                                        src={product.images[0]}
-                                                        alt={product.name}
-                                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full bg-gray-50 flex items-center justify-center text-gray-300 font-serif italic">
-                                                        Ashbloom
-                                                    </div>
-                                                )}
-                                                {product.stock <= 0 && (
-                                                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-                                                        <span className="bg-black text-white px-3 py-1 text-xs uppercase tracking-widest font-bold">Sold Out</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="text-center">
-                                                <h3 className="font-serif text-lg text-foreground group-hover:text-primary transition-colors">{product.name}</h3>
-                                                <p className="text-xs text-gray-500 uppercase tracking-widest mt-1 mb-2">{product.category?.name}</p>
+                                    {products.map(product => {
+                                        const salePrice = product.isOnSale
+                                            ? Number(product.price) * (1 - product.salePercentage / 100)
+                                            : null;
 
-                                                {/* Rating Display */}
-                                                {(product as any).reviewCount > 0 && (
-                                                    <div className="flex items-center justify-center gap-1 mb-2">
-                                                        <div className="flex gap-0.5">
-                                                            {[1, 2, 3, 4, 5].map((star) => (
-                                                                <Star
-                                                                    key={star}
-                                                                    size={12}
-                                                                    className={star <= Math.round((product as any).averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
-                                                                />
-                                                            ))}
+                                        return (
+                                            <Link href={`./shop/${product.id}`} key={product.id} className="group">
+                                                <div className="relative aspect-3/4 overflow-hidden bg-white mb-4 rounded-sm">
+                                                    {product.images[0] ? (
+                                                        <img
+                                                            src={product.images[0]}
+                                                            alt={product.name}
+                                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-gray-50 flex items-center justify-center text-gray-300 font-serif italic">
+                                                            Ashbloom
                                                         </div>
-                                                        <span className="text-xs text-gray-500">({(product as any).reviewCount})</span>
-                                                    </div>
-                                                )}
+                                                    )}
 
-                                                <p className="font-medium text-foreground">${Number(product.price).toFixed(2)}</p>
-                                            </div>
-                                        </Link>
-                                    ))}
+                                                    {/* Sale Badge */}
+                                                    {product.isOnSale && (
+                                                        <div className="absolute top-3 left-3 z-10">
+                                                            <span className="bg-red-600 text-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest rounded-sm shadow-sm">
+                                                                {product.salePercentage}% OFF
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {product.stock <= 0 && (
+                                                        <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-20">
+                                                            <span className="bg-black text-white px-3 py-1 text-xs uppercase tracking-widest font-bold">Sold Out</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="text-center">
+                                                    <h3 className="font-serif text-lg text-foreground group-hover:text-primary transition-colors">{product.name}</h3>
+                                                    <p className="text-xs text-gray-500 uppercase tracking-widest mt-1 mb-2">{product.category?.name}</p>
+
+                                                    {/* Rating Display */}
+                                                    {(product as any).reviewCount > 0 && (
+                                                        <div className="flex items-center justify-center gap-1 mb-2">
+                                                            <div className="flex gap-0.5">
+                                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                                    <Star
+                                                                        key={star}
+                                                                        size={12}
+                                                                        className={star <= Math.round((product as any).averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                            <span className="text-xs text-gray-500">({(product as any).reviewCount})</span>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        {product.isOnSale ? (
+                                                            <>
+                                                                <span className="font-medium text-red-600">${salePrice?.toFixed(2)}</span>
+                                                                <span className="text-sm text-gray-400 line-through">${Number(product.price).toFixed(2)}</span>
+                                                            </>
+                                                        ) : (
+                                                            <p className="font-medium text-foreground">${Number(product.price).toFixed(2)}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="text-center py-24">

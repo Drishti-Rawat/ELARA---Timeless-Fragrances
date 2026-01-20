@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getCartAction, updateCartItemAction, placeOrderAction } from '../actions/shop';
 import { getUserAddressesAction, addAddressAction, deleteAddressAction } from '../actions/address';
+import { validateCouponAction } from '../actions/coupons';
 import { getUserSessionAction } from '../actions/auth-custom';
-import { Loader2, Trash2, ArrowRight, ShoppingBag, CheckCircle2, MapPin, Plus, Home, Briefcase, User } from 'lucide-react';
+import { Loader2, Trash2, ArrowRight, ShoppingBag, CheckCircle2, MapPin, Plus, Home, Briefcase, User, Tag } from 'lucide-react';
 
 export default function CartPage() {
     const router = useRouter();
@@ -31,6 +32,12 @@ export default function CartPage() {
         isDefault: false
     });
     const [addingAddress, setAddingAddress] = useState(false);
+
+    // Coupon State
+    const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+    const [couponError, setCouponError] = useState('');
+    const [validatingCoupon, setValidatingCoupon] = useState(false);
 
     const loadData = async () => {
         setLoading(true);
@@ -114,18 +121,70 @@ export default function CartPage() {
 
         setProcessing(true);
 
-        const total = cart.items.reduce((sum: number, item: any) => sum + (Number(item.product.price) * item.quantity), 0);
+        const subtotal = cart.items.reduce((sum: number, item: any) => {
+            let price = Number(item.product.price);
+            if (item.product.isOnSale) {
+                price = price * (1 - item.product.salePercentage / 100);
+            }
+            return sum + (price * item.quantity);
+        }, 0);
+        const discount = appliedCoupon ? appliedCoupon.discount : 0;
+        const total = subtotal - discount;
 
-        // Pass snapshot of address
-        const res = await placeOrderAction(user.userId, total, cart.items, selectedAddr);
+        // Pass snapshot of address and coupon info
+        const res = await placeOrderAction(
+            user.userId,
+            total,
+            cart.items,
+            selectedAddr,
+            appliedCoupon?.code,
+            subtotal,
+            discount
+        );
 
         if (res.success) {
             setOrderPlaced(true);
             setCart(null);
+            setAppliedCoupon(null);
         } else {
             alert('Failed to place order. Please try again.');
         }
         setProcessing(false);
+    };
+
+    const handleApplyCoupon = async () => {
+        if (!couponCode.trim()) {
+            setCouponError('Please enter a coupon code');
+            return;
+        }
+
+        setValidatingCoupon(true);
+        setCouponError('');
+
+        const subtotal = cart.items.reduce((sum: number, item: any) => {
+            let price = Number(item.product.price);
+            if (item.product.isOnSale) {
+                price = price * (1 - item.product.salePercentage / 100);
+            }
+            return sum + (price * item.quantity);
+        }, 0);
+        const res = await validateCouponAction(couponCode, subtotal, user.userId, cart.items);
+
+        if (res.success && res.coupon) {
+            setAppliedCoupon(res.coupon);
+            setCouponError('');
+        } else {
+            setCouponError(res.error || 'Invalid coupon');
+            setAppliedCoupon(null);
+        }
+
+        setValidatingCoupon(false);
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponCode('');
+        setCouponError('');
     };
 
     if (loading) return <div className="min-h-screen flex items-center justify-center pt-20"><Loader2 className="animate-spin text-gray-400" /></div>;
@@ -166,7 +225,13 @@ export default function CartPage() {
         );
     }
 
-    const subtotal = cart.items.reduce((sum: number, item: any) => sum + (Number(item.product.price) * item.quantity), 0);
+    const subtotal = cart.items.reduce((sum: number, item: any) => {
+        let price = Number(item.product.price);
+        if (item.product.isOnSale) {
+            price = price * (1 - item.product.salePercentage / 100);
+        }
+        return sum + (price * item.quantity);
+    }, 0);
     const shipping: number = 0; // Free shipping
     const total = subtotal + shipping;
 
@@ -305,7 +370,16 @@ export default function CartPage() {
                                                     <h3 className="font-serif text-lg text-gray-900">{item.product.name}</h3>
                                                     <p className="text-xs text-gray-500 uppercase tracking-widest mt-1">{item.product.category?.name}</p>
                                                 </div>
-                                                <p className="font-medium text-gray-900">${(Number(item.product.price) * item.quantity).toFixed(2)}</p>
+                                                <div className="text-right">
+                                                    {item.product.isOnSale ? (
+                                                        <>
+                                                            <p className="font-medium text-red-600">${(Number(item.product.price) * (1 - item.product.salePercentage / 100) * item.quantity).toFixed(2)}</p>
+                                                            <p className="text-xs text-gray-400 line-through">${(Number(item.product.price) * item.quantity).toFixed(2)}</p>
+                                                        </>
+                                                    ) : (
+                                                        <p className="font-medium text-gray-900">${(Number(item.product.price) * item.quantity).toFixed(2)}</p>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             <div className="flex items-center justify-between mt-6">
@@ -341,18 +415,68 @@ export default function CartPage() {
                         <div className="bg-gray-50 p-8 rounded-sm sticky top-24">
                             <h3 className="font-serif text-xl mb-6">Payment Details</h3>
 
+                            {/* Coupon Section */}
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Have a coupon?</label>
+                                {!appliedCoupon ? (
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <Tag size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                value={couponCode}
+                                                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                                placeholder="Enter code"
+                                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={handleApplyCoupon}
+                                            disabled={validatingCoupon || !couponCode.trim()}
+                                            className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+                                        >
+                                            {validatingCoupon ? 'Checking...' : 'Apply'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="bg-green-50 border border-green-200 rounded-md p-3 flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-bold text-green-700">{appliedCoupon.code} Applied!</p>
+                                            <p className="text-xs text-green-600">
+                                                You saved ₹{appliedCoupon.discount.toFixed(2)}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={handleRemoveCoupon}
+                                            className="text-red-600 hover:text-red-700 text-sm font-medium"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                )}
+                                {couponError && (
+                                    <p className="text-xs text-red-600 mt-1">{couponError}</p>
+                                )}
+                            </div>
+
                             <div className="space-y-4 mb-6 text-sm">
                                 <div className="flex justify-between text-gray-600">
                                     <span>Subtotal</span>
-                                    <span>${subtotal.toFixed(2)}</span>
+                                    <span>₹{subtotal.toFixed(2)}</span>
                                 </div>
+                                {appliedCoupon && (
+                                    <div className="flex justify-between text-green-600 font-medium">
+                                        <span>Discount ({appliedCoupon.code})</span>
+                                        <span>-₹{appliedCoupon.discount.toFixed(2)}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between text-gray-600">
                                     <span>Shipping</span>
-                                    <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+                                    <span>{shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
                                 </div>
                                 <div className="border-t border-gray-200 pt-4 flex justify-between font-bold text-lg text-gray-900">
                                     <span>Total</span>
-                                    <span>${total.toFixed(2)}</span>
+                                    <span>₹{(total - (appliedCoupon?.discount || 0)).toFixed(2)}</span>
                                 </div>
                             </div>
 

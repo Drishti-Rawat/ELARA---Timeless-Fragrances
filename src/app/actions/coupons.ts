@@ -1,0 +1,171 @@
+'use server';
+
+import { prisma } from "@/lib/prisma";
+
+// Admin: Create a new coupon
+export async function createCouponAction(data: {
+    code: string;
+    discountType: 'PERCENTAGE' | 'FIXED';
+    discountValue: number;
+    minOrderValue?: number;
+    maxUses?: number;
+    firstOrderOnly?: boolean;
+    excludeSaleItems?: boolean;
+    expiresAt?: Date;
+}) {
+    try {
+        const coupon = await prisma.coupon.create({
+            data: {
+                code: data.code.toUpperCase(),
+                discountType: data.discountType,
+                discountValue: data.discountValue,
+                minOrderValue: data.minOrderValue || null,
+                maxUses: data.maxUses || null,
+                firstOrderOnly: data.firstOrderOnly || false,
+                excludeSaleItems: data.excludeSaleItems !== undefined ? data.excludeSaleItems : true,
+                expiresAt: data.expiresAt || null,
+            }
+        });
+
+        return { success: true, coupon };
+    } catch (error) {
+        console.error("Create coupon error:", error);
+        return { success: false, error: "Failed to create coupon. Code might already exist." };
+    }
+}
+
+// Admin: Get all coupons
+export async function getAllCouponsAction() {
+    try {
+        const coupons = await prisma.coupon.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+
+        return { success: true, coupons };
+    } catch (error) {
+        console.error("Get coupons error:", error);
+        return { success: false, error: "Failed to fetch coupons" };
+    }
+}
+
+// Admin: Toggle coupon active status
+export async function toggleCouponStatusAction(id: string) {
+    try {
+        const coupon = await prisma.coupon.findUnique({ where: { id } });
+        if (!coupon) return { success: false, error: "Coupon not found" };
+
+        const updated = await prisma.coupon.update({
+            where: { id },
+            data: { isActive: !coupon.isActive }
+        });
+
+        return { success: true, coupon: updated };
+    } catch (error) {
+        console.error("Toggle coupon error:", error);
+        return { success: false, error: "Failed to update coupon" };
+    }
+}
+
+// Admin: Delete coupon
+export async function deleteCouponAction(id: string) {
+    try {
+        await prisma.coupon.delete({ where: { id } });
+        return { success: true };
+    } catch (error) {
+        console.error("Delete coupon error:", error);
+        return { success: false, error: "Failed to delete coupon" };
+    }
+}
+
+// User: Validate and apply coupon
+export async function validateCouponAction(
+    code: string,
+    orderTotal: number,
+    userId: string,
+    cartItems?: any[] // Pass cart items to check for sale products
+) {
+    try {
+        const coupon = await prisma.coupon.findUnique({
+            where: { code: code.toUpperCase() },
+            include: {
+                usages: {
+                    where: { userId }
+                }
+            }
+        });
+
+        if (!coupon) {
+            return { success: false, error: "Invalid coupon code" };
+        }
+
+        if (!coupon.isActive) {
+            return { success: false, error: "This coupon is no longer active" };
+        }
+
+        if (coupon.expiresAt && new Date() > coupon.expiresAt) {
+            return { success: false, error: "This coupon has expired" };
+        }
+
+        if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
+            return { success: false, error: "This coupon has reached its usage limit" };
+        }
+
+        // Check if user already used this coupon
+        if (coupon.usages.length > 0) {
+            return { success: false, error: "You've already used this coupon" };
+        }
+
+        // Check if coupon is for first order only
+        if (coupon.firstOrderOnly) {
+            const previousOrders = await prisma.order.count({
+                where: { userId }
+            });
+
+            if (previousOrders > 0) {
+                return { success: false, error: "This coupon is only for first-time customers" };
+            }
+        }
+
+        // Check if coupon excludes sale items and cart has sale items
+        if (coupon.excludeSaleItems && cartItems && cartItems.length > 0) {
+            const hasSaleItems = cartItems.some((item: any) => item.product?.isOnSale);
+            if (hasSaleItems) {
+                return {
+                    success: false,
+                    error: "This coupon cannot be applied to products already on sale"
+                };
+            }
+        }
+
+        if (coupon.minOrderValue && orderTotal < Number(coupon.minOrderValue)) {
+            return {
+                success: false,
+                error: `Minimum order value of ₹${Number(coupon.minOrderValue).toFixed(2)} required`
+            };
+        }
+
+        // Calculate discount
+        let discount = 0;
+        if (coupon.discountType === 'PERCENTAGE') {
+            discount = (orderTotal * Number(coupon.discountValue)) / 100;
+        } else {
+            discount = Number(coupon.discountValue);
+        }
+
+        // Ensure discount doesn't exceed order total
+        discount = Math.min(discount, orderTotal);
+
+        return {
+            success: true,
+            coupon: {
+                code: coupon.code,
+                discountType: coupon.discountType,
+                discountValue: Number(coupon.discountValue),
+                discount: discount
+            }
+        };
+    } catch (error) {
+        console.error("Validate coupon error:", error);
+        return { success: false, error: "Failed to validate coupon" };
+    }
+}
