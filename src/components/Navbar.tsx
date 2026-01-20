@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, Menu, User, Search, LogOut, LayoutDashboard } from 'lucide-react';
+import { ShoppingBag, Menu, User, Search, LogOut, LayoutDashboard, Heart } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getUserSessionAction, logoutAction } from '@/app/actions/auth-custom';
 
@@ -37,7 +37,7 @@ export default function Navbar() {
                     </div>
                 </div>
 
-                <Link href="/" className="absolute left-1/2 transform -translate-x-1/2 text-3xl font-serif font-bold tracking-widest hover:text-primary transition-colors text-foreground">
+                <Link href="/" className="absolute left-1/2 transform -translate-x-1/2 text-xl font-serif font-bold tracking-widest hover:text-primary transition-colors text-foreground">
                     ASHBLOOM
                 </Link>
 
@@ -45,6 +45,11 @@ export default function Navbar() {
                     <button className="hover:text-primary transition-colors">
                         <Search size={20} />
                     </button>
+
+                    {/* Wishlist Icon */}
+                    <Link href="/wishlist" className="hover:text-primary transition-colors group">
+                        <Heart size={20} className="group-hover:fill-primary/20 transition-colors" />
+                    </Link>
 
                     {user ? (
                         <div className="relative group">
@@ -63,6 +68,10 @@ export default function Navbar() {
                                         Admin Dashboard
                                     </Link>
                                 )}
+
+                                <Link href="/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary font-medium">
+                                    My Orders
+                                </Link>
 
                                 <button
                                     onClick={async () => {

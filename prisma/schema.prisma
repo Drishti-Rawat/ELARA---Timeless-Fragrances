@@ -36,8 +36,11 @@ model Address {
   city      String
   state     String
   zip       String
-  country   String
+  country   String   @default("India")
+  phone     String?
+  tag       String   @default("Home") // e.g. Home, Work, Other
   isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 model Product {
@@ -115,15 +118,16 @@ model WishlistItem {
 }
 
 model Order {
-  id        String      @id @default(uuid())
-  userId    String
-  user      User        @relation(fields: [userId], references: [id])
-  status    String      @default("PENDING") // PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
-  total     Decimal     @db.Decimal(10, 2)
-  address   String?     // Stored address snapshot
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  items     OrderItem[]
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  status          String      @default("PENDING") // PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+  total           Decimal     @db.Decimal(10, 2)
+  deliveryAddress Json?       // Stored address snapshot
+  trackingNumber  String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           OrderItem[]
 }
 
 model OrderItem {

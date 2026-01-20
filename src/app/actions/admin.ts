@@ -123,3 +123,29 @@ export async function getOrdersAction() {
         return { success: false, error: "Failed to fetch orders" };
     }
 }
+
+export async function updateOrderStatusAction(orderId: string, status: string, trackingNumber?: string) {
+    try {
+        const updateData: any = { status };
+
+        // Auto-generate tracking number if shipping and not provided
+        if (status === 'SHIPPED' && !trackingNumber) {
+            // numeric timestamp + random suffix
+            const timestamp = Date.now().toString().slice(-6);
+            updateData.trackingNumber = `TRK-${orderId.slice(0, 4).toUpperCase()}-${timestamp}`;
+        } else if (trackingNumber) {
+            updateData.trackingNumber = trackingNumber;
+        }
+
+        const order = await prisma.order.update({
+            where: { id: orderId },
+            data: updateData
+        });
+        revalidatePath('/admin/orders');
+        revalidatePath('/orders');
+        return { success: true, order };
+    } catch (error) {
+        console.error("Update Order Error:", error);
+        return { success: false, error: "Failed to update order status" };
+    }
+}
