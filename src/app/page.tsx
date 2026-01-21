@@ -22,7 +22,7 @@ export default function Home() {
             Cosmic Luxury Fragrances
           </span>
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif text-white mb-8 tracking-tight drop-shadow-lg">
-            ASHBLOOM
+            ELARA
           </h1>
           <p className="text-gray-300 text-lg md:text-xl font-light tracking-wide max-w-2xl mx-auto mb-12 leading-relaxed">
             Scents forged from stardust. Experience the infinite allure of the cosmos captured in glass.

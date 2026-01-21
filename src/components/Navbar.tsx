@@ -38,7 +38,7 @@ export default function Navbar() {
                 </div>
 
                 <Link href="/" className="absolute left-1/2 transform -translate-x-1/2 text-xl font-serif font-bold tracking-widest hover:text-primary transition-colors text-foreground">
-                    ASHBLOOM
+                    ELARA
                 </Link>
 
                 <div className="flex items-center gap-6 text-foreground">

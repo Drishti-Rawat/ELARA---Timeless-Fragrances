@@ -130,7 +130,7 @@ export default function WishlistPage() {
                                 {item.product.images[0] ? (
                                     <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                                 ) : (
-                                    <div className="flex items-center justify-center w-full h-full text-gray-300 italic">Ashbloom</div>
+                                    <div className="flex items-center justify-center w-full h-full text-gray-300 italic">ELARA</div>
                                 )}
 
                                 <button

@@ -104,7 +104,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                             {product.images[0] ? (
                                 <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-300 italic font-serif text-2xl">Ashbloom</div>
+                                <div className="w-full h-full flex items-center justify-center text-gray-300 italic font-serif text-2xl">ELARA</div>
                             )}
                             {outOfStock && <div className="absolute inset-0 bg-white/60 flex items-center justify-center"><span className="bg-black text-white px-4 py-2 text-sm uppercase tracking-widest font-bold">Sold Out</span></div>}
                         </div>
@@ -265,7 +265,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                     {review.adminResponse && (
                                         <div className="mt-4 ml-6 pl-4 border-l-2 border-primary/30 bg-primary/5 p-3 rounded-r-md">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs font-bold text-primary uppercase tracking-wider">ASHBLOOM Response</span>
+                                                <span className="text-xs font-bold text-primary uppercase tracking-wider">ELARA Response</span>
                                                 <span className="text-xs text-gray-400">• {new Date(review.respondedAt).toLocaleDateString()}</span>
                                             </div>
                                             <p className="text-sm text-gray-700">{review.adminResponse}</p>

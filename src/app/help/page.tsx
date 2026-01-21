@@ -123,16 +123,16 @@ export default function HelpSupportPage() {
                                         <div className="mb-3">
                                             <p className="text-xs text-gray-500 mb-1">Follow & Message Us</p>
                                             <a
-                                                href="https://instagram.com/ashbloom"
+                                                href="https://instagram.com/elara"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="font-medium text-lg text-primary hover:underline"
                                             >
-                                                @ashbloom
+                                                @elara
                                             </a>
                                         </div>
                                         <a
-                                            href="https://instagram.com/ashbloom"
+                                            href="https://instagram.com/elara"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-md text-sm font-medium inline-flex items-center gap-2 transition-all"
@@ -152,8 +152,8 @@ export default function HelpSupportPage() {
                                     <div className="flex-1">
                                         <h3 className="font-bold mb-1">Email Support</h3>
                                         <p className="text-sm text-gray-600 mb-3">Send us a detailed message</p>
-                                        <a href="mailto:support@ashbloom.com" className="text-primary hover:underline font-medium">
-                                            support@ashbloom.com
+                                        <a href="mailto:support@elara.com" className="text-primary hover:underline font-medium">
+                                            support@elara.com
                                         </a>
                                         <p className="text-xs text-gray-500 mt-2">We typically respond within 24 hours</p>
                                     </div>

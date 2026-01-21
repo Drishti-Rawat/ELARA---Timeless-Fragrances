@@ -133,8 +133,8 @@ export default function InvoiceButton({ invoice }: { invoice: InvoiceData }) {
         </div>
 
         <div class="footer">
-            <p>Thank you for shopping with ASHBLOOM!</p>
-            <p>For any queries, contact us at support@ashbloom.com</p>
+            <p>Thank you for shopping with ELARA!</p>
+            <p>For any queries, contact us at support@elara.com</p>>
         </div>
     </div>
 </body>

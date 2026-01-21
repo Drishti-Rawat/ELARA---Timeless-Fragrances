@@ -19,7 +19,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Sidebar */}
             <aside className="w-64 bg-white border-r border-gray-100 flex-col hidden md:flex fixed h-full z-10 font-sans">
                 <div className="p-8">
-                    <h1 className="text-2xl font-serif font-bold text-[var(--color-foreground)] tracking-tight">Ashbloom</h1>
+                    <h1 className="text-2xl font-serif font-bold text-[var(--color-foreground)] tracking-tight">ELARA</h1>
                     <p className="text-xs text-[var(--color-primary)] tracking-[0.2em] uppercase mt-1 pl-0.5">Admin Console</p>
                 </div>
 

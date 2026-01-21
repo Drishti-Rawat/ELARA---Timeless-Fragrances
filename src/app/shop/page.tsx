@@ -274,7 +274,7 @@ export default function ShopPage() {
                                                             />
                                                         ) : (
                                                             <div className="w-full h-full bg-gray-50 flex items-center justify-center text-gray-300 font-serif italic">
-                                                                Ashbloom
+                                                                ELARA
                                                             </div>
                                                         )}
 
