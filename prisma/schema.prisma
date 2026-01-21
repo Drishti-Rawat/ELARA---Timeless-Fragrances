@@ -11,17 +11,25 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  DELIVERY_AGENT
 }
 
 model User {
   id        String   @id // Supabase Auth ID
   email     String   @unique
   name      String?
+  phone     String?  // Main contact number (crucial for agents)
   role      Role     @default(USER)
+  
+  // Delivery Agent specific fields
+  vehicleDetails String? // e.g., "Bike - MH12 AB 1234"
+  isAvailable    Boolean @default(true)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  orders       Order[]
+  orders         Order[]  @relation("CustomerOrders") // Rename implicit relation for clarity if needed, or keep default
+  assignedOrders Order[]  @relation("DeliveryAgentOrders") // Orders assigned to this agent
   cart         Cart?
   wishlist     Wishlist?
   addresses    Address[]
@@ -124,8 +132,8 @@ model WishlistItem {
 model Order {
   id              String      @id @default(uuid())
   userId          String
-  user            User        @relation(fields: [userId], references: [id])
-  status          String      @default("PENDING") // PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+  user            User        @relation("CustomerOrders", fields: [userId], references: [id])
+  status          String      @default("PENDING") // PENDING, PROCESSING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
   subtotal        Decimal     @db.Decimal(10, 2) @default(0) // Amount before discount
   discount        Decimal     @db.Decimal(10, 2) @default(0) // Discount amount
   total           Decimal     @db.Decimal(10, 2)
@@ -135,6 +143,12 @@ model Order {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   items           OrderItem[]
+
+  // Delivery Agent Fields
+  deliveryAgentId String?
+  deliveryAgent   User?   @relation("DeliveryAgentOrders", fields: [deliveryAgentId], references: [id])
+  deliveryOtp     String? // OTP for secure delivery verification
+  agentCommission Decimal @default(0) @db.Decimal(10, 2)
 }
 
 model OrderItem {
