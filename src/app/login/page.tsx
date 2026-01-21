@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, KeyRound, User, Loader } from 'lucide-react';
+import { Mail, KeyRound, User, Loader, Phone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { sendOtpAction, verifyOtpAction, registerUserAction } from '../actions/auth-custom';
 
@@ -15,6 +15,7 @@ export default function AuthPage() {
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
     const [name, setName] = useState('');
+    const [phone, setPhone] = useState('');
     const [address, setAddress] = useState({ street: '', city: '', state: '', zip: '', country: '' });
 
     const [loading, setLoading] = useState(false);
@@ -68,6 +69,7 @@ export default function AuthPage() {
         const res = await registerUserAction({
             email,
             name,
+            phone,
             address: skipAddress ? undefined : address
         });
 
@@ -194,6 +196,13 @@ export default function AuthPage() {
                                     <div className="relative">
                                         <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                         <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input-field" placeholder="John Doe" required />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold tracking-wide text-gray-400 uppercase">Phone Number</label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                        <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="input-field" placeholder="+1 234 567 8900" required />
                                     </div>
                                 </div>
                                 <button type="submit" className="btn-block">Continue</button>

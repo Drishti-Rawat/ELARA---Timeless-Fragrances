@@ -128,7 +128,7 @@ export async function verifyOtpAction(email: string, code: string) {
 }
 
 // Reuse existing helpers
-export async function registerUserAction(data: { email: string; name: string; address?: any }) {
+export async function registerUserAction(data: { email: string; name: string; phone?: string; address?: any }) {
     try {
         const existingUser = await prisma.user.findUnique({
             where: { email: data.email }
@@ -142,6 +142,7 @@ export async function registerUserAction(data: { email: string; name: string; ad
                 where: { email: data.email },
                 data: {
                     name: data.name,
+                    phone: data.phone,
                     addresses: data.address ? {
                         create: { ...data.address, isDefault: true }
                     } : undefined
@@ -155,6 +156,7 @@ export async function registerUserAction(data: { email: string; name: string; ad
                     id: newId,
                     email: data.email,
                     name: data.name,
+                    phone: data.phone,
                     role: 'USER',
                     addresses: data.address ? {
                         create: { ...data.address, isDefault: true }

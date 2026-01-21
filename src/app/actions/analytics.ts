@@ -28,6 +28,7 @@ export async function getAnalyticsDataAction(period: AnalyticsPeriod) {
             select: {
                 id: true,
                 total: true,
+                agentCommission: true,
                 createdAt: true,
                 status: true,
                 items: {
@@ -77,6 +78,7 @@ export async function getAnalyticsDataAction(period: AnalyticsPeriod) {
 
         // Aggregate
         let totalRevenue = 0;
+        let totalCommissions = 0;
         let totalOrders = 0;
 
         const chartMap = new Map<string, { revenue: number; count: number, sortKey: number }>();
@@ -95,53 +97,57 @@ export async function getAnalyticsDataAction(period: AnalyticsPeriod) {
             // If cancelled, skip revenue & product stats
             if (status === 'CANCELLED') return;
 
-            totalRevenue += Number(order.total);
             totalOrders += 1;
 
-            // 1. Time Series Data
-            let key = '';
-            let sortKey = date.getTime();
+            if (status === 'DELIVERED') {
+                totalRevenue += Number(order.total);
+                totalCommissions += Number(order.agentCommission || 0);
 
-            if (period === 'week') {
-                key = date.toISOString().split('T')[0];
-            } else if (period === 'month') {
-                key = date.toISOString().split('T')[0];
-            } else if (period === 'year') {
-                key = date.toISOString().substring(0, 7);
+                // 1. Time Series Data
+                let key = '';
+                let sortKey = date.getTime();
+
+                if (period === 'week') {
+                    key = date.toISOString().split('T')[0];
+                } else if (period === 'month') {
+                    key = date.toISOString().split('T')[0];
+                } else if (period === 'year') {
+                    key = date.toISOString().substring(0, 7);
+                }
+
+                if (!chartMap.has(key)) {
+                    chartMap.set(key, { revenue: 0, count: 0, sortKey });
+                }
+                const entry = chartMap.get(key)!;
+                entry.revenue += Number(order.total);
+                entry.count += 1;
+
+                // 2. Category, Product & Gender Data
+                order.items.forEach((item: any) => {
+                    const price = Number(item.price) * item.quantity;
+
+                    // Category
+                    const catName = item.product.category?.name || 'Uncategorized';
+                    if (!categoryMap.has(catName)) categoryMap.set(catName, { revenue: 0, count: 0 });
+                    const catEntry = categoryMap.get(catName)!;
+                    catEntry.revenue += price;
+                    catEntry.count += item.quantity;
+
+                    // Product
+                    const prodId = item.productId;
+                    if (!productMap.has(prodId)) productMap.set(prodId, { revenue: 0, count: 0, name: item.product.name });
+                    const prodEntry = productMap.get(prodId)!;
+                    prodEntry.revenue += price;
+                    prodEntry.count += item.quantity;
+
+                    // Gender
+                    const gender = item.product.gender || 'UNISEX';
+                    if (!genderMap.has(gender)) genderMap.set(gender, { revenue: 0, count: 0 });
+                    const genderEntry = genderMap.get(gender)!;
+                    genderEntry.revenue += price;
+                    genderEntry.count += item.quantity;
+                });
             }
-
-            if (!chartMap.has(key)) {
-                chartMap.set(key, { revenue: 0, count: 0, sortKey });
-            }
-            const entry = chartMap.get(key)!;
-            entry.revenue += Number(order.total);
-            entry.count += 1;
-
-            // 2. Category, Product & Gender Data
-            order.items.forEach((item: any) => {
-                const price = Number(item.price) * item.quantity;
-
-                // Category
-                const catName = item.product.category?.name || 'Uncategorized';
-                if (!categoryMap.has(catName)) categoryMap.set(catName, { revenue: 0, count: 0 });
-                const catEntry = categoryMap.get(catName)!;
-                catEntry.revenue += price;
-                catEntry.count += item.quantity;
-
-                // Product
-                const prodId = item.productId;
-                if (!productMap.has(prodId)) productMap.set(prodId, { revenue: 0, count: 0, name: item.product.name });
-                const prodEntry = productMap.get(prodId)!;
-                prodEntry.revenue += price;
-                prodEntry.count += item.quantity;
-
-                // Gender
-                const gender = item.product.gender || 'UNISEX';
-                if (!genderMap.has(gender)) genderMap.set(gender, { revenue: 0, count: 0 });
-                const genderEntry = genderMap.get(gender)!;
-                genderEntry.revenue += price;
-                genderEntry.count += item.quantity;
-            });
         });
 
         // Calculate AOV
@@ -244,6 +250,7 @@ export async function getAnalyticsDataAction(period: AnalyticsPeriod) {
         return {
             success: true,
             totalRevenue,
+            totalCommissions,
             totalOrders,
             averageOrderValue,
             newCustomersCount,

@@ -6,7 +6,7 @@ import { getUserOrdersAction, updateOrderAddressAction } from '../actions/shop';
 import { cancelOrderAction } from '../actions/order';
 import { generateInvoiceDataAction } from '../actions/invoice';
 import { getUserSessionAction } from '../actions/auth-custom';
-import { Loader2, Package, Truck, Calendar, ArrowRight, MapPin, Edit2, XCircle, Clock, CheckCircle } from 'lucide-react';
+import { Loader2, Package, Truck, Calendar, ArrowRight, MapPin, Edit2, XCircle, Clock, CheckCircle, User, Phone } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import InvoiceButton from '@/components/InvoiceButton';
 
@@ -140,13 +140,7 @@ export default function UserOrdersPage() {
                                             <p className="text-xs text-gray-500 uppercase tracking-wider">Total</p>
                                             <p className="font-bold text-gray-900">₹{Number(order.total).toFixed(2)}</p>
                                         </div>
-                                        <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${order.status === 'DELIVERED' ? 'bg-green-100 text-green-700 border-green-200' :
-                                            order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                                                order.status === 'CANCELLED' ? 'bg-red-100 text-red-700 border-red-200' :
-                                                    'bg-yellow-100 text-yellow-700 border-yellow-200'
-                                            }`}>
-                                            {order.status}
-                                        </div>
+
 
                                         {/* Invoice Download Button */}
                                         {invoices[order.id] ? (
@@ -174,10 +168,11 @@ export default function UserOrdersPage() {
                                                     className="h-full bg-primary transition-all duration-500"
                                                     style={{
                                                         width: order.status === 'PENDING' ? '0%' :
-                                                            order.status === 'PROCESSING' ? '33%' :
-                                                                order.status === 'SHIPPED' ? '66%' :
-                                                                    order.status === 'DELIVERED' ? '100%' :
-                                                                        order.status === 'CANCELLED' ? '0%' : '0%'
+                                                            order.status === 'PROCESSING' ? '25%' :
+                                                                order.status === 'SHIPPED' ? '50%' :
+                                                                    order.status === 'OUT_FOR_DELIVERY' ? '75%' :
+                                                                        order.status === 'DELIVERED' ? '100%' :
+                                                                            order.status === 'CANCELLED' ? '0%' : '0%'
                                                     }}
                                                 />
                                             </div>
@@ -186,7 +181,7 @@ export default function UserOrdersPage() {
                                             <div className="relative flex justify-between">
                                                 {/* Pending */}
                                                 <div className="flex flex-col items-center">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(order.status)
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${['PENDING', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)
                                                         ? 'bg-primary border-primary text-white'
                                                         : 'bg-white border-gray-300 text-gray-400'
                                                         }`}>
@@ -197,7 +192,7 @@ export default function UserOrdersPage() {
 
                                                 {/* Processing */}
                                                 <div className="flex flex-col items-center">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${['PROCESSING', 'SHIPPED', 'DELIVERED'].includes(order.status)
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${['PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)
                                                         ? 'bg-primary border-primary text-white'
                                                         : 'bg-white border-gray-300 text-gray-400'
                                                         }`}>
@@ -208,13 +203,24 @@ export default function UserOrdersPage() {
 
                                                 {/* Shipped */}
                                                 <div className="flex flex-col items-center">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${['SHIPPED', 'DELIVERED'].includes(order.status)
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${['SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)
                                                         ? 'bg-primary border-primary text-white'
                                                         : 'bg-white border-gray-300 text-gray-400'
                                                         }`}>
                                                         <Truck size={16} />
                                                     </div>
                                                     <p className="text-xs mt-2 font-medium text-gray-600">Shipped</p>
+                                                </div>
+
+                                                {/* Out for Delivery */}
+                                                <div className="flex flex-col items-center">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${['OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)
+                                                        ? 'bg-primary border-primary text-white'
+                                                        : 'bg-white border-gray-300 text-gray-400'
+                                                        }`}>
+                                                        <MapPin size={16} />
+                                                    </div>
+                                                    <p className="text-xs mt-2 font-medium text-gray-600">Out for Delivery</p>
                                                 </div>
 
                                                 {/* Delivered */}
@@ -247,6 +253,24 @@ export default function UserOrdersPage() {
                                                 <p className="text-sm text-blue-700 mt-1">
                                                     Tracking Number: <span className="font-mono bg-white px-2 py-0.5 rounded border border-blue-200 select-all">{order.trackingNumber}</span>
                                                 </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Delivery Agent Info */}
+                                    {order.status === 'OUT_FOR_DELIVERY' && order.deliveryAgent && (
+                                        <div className="mb-6 p-4 bg-purple-50 border border-purple-100 rounded-md flex items-start gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                                                <User size={20} />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-bold text-purple-900">Delivery Hero</h4>
+                                                <p className="text-sm text-purple-700 mt-0.5">{order.deliveryAgent.name} is arriving today!</p>
+                                                {order.deliveryAgent.phone && (
+                                                    <a href={`tel:${order.deliveryAgent.phone}`} className="inline-flex items-center gap-2 mt-2 text-xs font-bold uppercase tracking-wider text-white bg-purple-600 px-3 py-1.5 rounded-full hover:bg-purple-700 transition-colors">
+                                                        <Phone size={12} /> Call Agent
+                                                    </a>
+                                                )}
                                             </div>
                                         </div>
                                     )}

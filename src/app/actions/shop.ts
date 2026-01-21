@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
+import { sendEmail } from "@/lib/email";
 
 export async function getShopProducts(params?: {
     categoryId?: string,
@@ -110,7 +111,12 @@ export async function addToCartAction(productId: string, quantity: number) {
         const userId = session.userId;
 
         // Find or create cart
-        let cart = await prisma.cart.findUnique({ where: { userId } });
+        const [existingCart, user] = await Promise.all([
+            prisma.cart.findUnique({ where: { userId } }),
+            prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } })
+        ]);
+
+        let cart = existingCart;
         if (!cart) {
             cart = await prisma.cart.create({ data: { userId } });
         }
@@ -238,6 +244,12 @@ export async function placeOrderAction(
         const randomSuffix = Math.floor(1000 + Math.random() * 9000); // 4 digit random
         const trackingNumber = `TRK-${timestamp}-${randomSuffix}`;
 
+        // Fetch user for email notification
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { email: true, name: true }
+        });
+
         // 1. Transaction to ensure stock and order integrity
         await prisma.$transaction(async (tx) => {
             // Create Order
@@ -279,12 +291,19 @@ export async function placeOrderAction(
                 }
             });
 
-            // Decrease Stock
+            // Decrease Stock (Safe Atomic Update)
             for (const item of items) {
-                await tx.product.update({
-                    where: { id: item.productId },
+                const updated = await tx.product.updateMany({
+                    where: {
+                        id: item.productId,
+                        stock: { gte: item.quantity }
+                    },
                     data: { stock: { decrement: item.quantity } }
                 });
+
+                if (updated.count === 0) {
+                    throw new Error(`Product ${item.productId} is out of stock`);
+                }
             }
 
             // Clear Cart
@@ -311,6 +330,27 @@ export async function placeOrderAction(
                 });
             }
         });
+
+        // Send Confirmation Email
+        if (user && user.email) {
+            const { getOrderConfirmationEmail } = await import('@/lib/emailTemplates');
+
+            await sendEmail({
+                to: user.email,
+                subject: `Order Confirmed - ELARA #${trackingNumber}`,
+                html: getOrderConfirmationEmail({
+                    userName: user.name || 'Valued Customer',
+                    orderId: trackingNumber,
+                    trackingNumber,
+                    total,
+                    items: items.map(item => ({
+                        name: item.productName || 'Product',
+                        quantity: item.quantity,
+                        price: item.price || 0
+                    }))
+                })
+            });
+        }
 
         revalidatePath('/cart');
         revalidatePath('/orders');
@@ -396,6 +436,9 @@ export async function getUserOrdersAction() {
             include: {
                 items: {
                     include: { product: true }
+                },
+                deliveryAgent: {
+                    select: { name: true, phone: true }
                 }
             },
             orderBy: { createdAt: 'desc' }

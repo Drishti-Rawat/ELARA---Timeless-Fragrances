@@ -80,6 +80,50 @@ export default function AnalyticsPage() {
                             </p>
                         </motion.div>
 
+                        {/* Net Revenue */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.02 }}
+                            className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center text-green-600">
+                                    <TrendingUp size={20} />
+                                </div>
+                                <span className="text-xs font-bold uppercase text-gray-400 tracking-wider">Net Earn</span>
+                            </div>
+                            <h3 className="text-3xl font-bold text-gray-900 mb-1">
+                                ₹{Number((data?.totalRevenue || 0) - (data?.totalCommissions || 0)).toFixed(2)}
+                            </h3>
+                            <p className="text-sm text-gray-500 flex items-center gap-1">
+                                <DollarSign size={14} className="text-green-500" />
+                                Revenue after commissions
+                            </p>
+                        </motion.div>
+
+                        {/* Commissions */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.04 }}
+                            className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-600">
+                                    <Users size={20} />
+                                </div>
+                                <span className="text-xs font-bold uppercase text-gray-400 tracking-wider">Payouts</span>
+                            </div>
+                            <h3 className="text-3xl font-bold text-gray-900 mb-1">
+                                ₹{Number(data?.totalCommissions || 0).toFixed(2)}
+                            </h3>
+                            <p className="text-sm text-gray-500 flex items-center gap-1">
+                                <DollarSign size={14} className="text-blue-500" />
+                                Paid to Delivery Agents
+                            </p>
+                        </motion.div>
+
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
