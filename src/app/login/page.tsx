@@ -82,9 +82,37 @@ export default function AuthPage() {
     };
 
     return (
-        <div className="min-h-screen flex bg-surface">
-            {/* Left Side - Image */}
-            <div className="hidden lg:block w-1/2 relative overflow-hidden">
+        <div className="min-h-screen flex bg-surface relative overflow-hidden">
+            {/* Mobile Background (Subtle Texture & Animation) */}
+            <div className="absolute inset-0 z-0 lg:hidden overflow-hidden">
+                <Image
+                    src="/images/landing/hero_abstract_branded.png"
+                    alt="Background Texture"
+                    fill
+                    className="object-cover opacity-[0.08]"
+                />
+                <div className="absolute inset-0 bg-linear-to-b from-surface/50 via-surface/80 to-surface" />
+
+                {/* Floating Orbs/Particles for Mobile "Cosmic" feel */}
+                <motion.div
+                    animate={{ y: [0, -20, 0], opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute top-20 right-[-20%] w-64 h-64 bg-primary/20 rounded-full blur-[80px]"
+                />
+                <motion.div
+                    animate={{ y: [0, 30, 0], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                    className="absolute bottom-10 left-[-20%] w-80 h-80 bg-neutral-400/20 rounded-full blur-[100px]"
+                />
+            </div>
+
+            {/* Left Side - Image (Desktop) */}
+            <div className="hidden lg:block w-1/2 relative overflow-hidden z-10">
+                {/* Desktop Branding Overlay */}
+                <div className="absolute top-8 left-8 z-20">
+                    <span className="text-2xl font-serif font-bold tracking-[0.2em] text-white">ELARA</span>
+                </div>
+
                 <Image
                     src="/auth-bg.png"
                     alt="Luxury Perfume"
@@ -100,16 +128,21 @@ export default function AuthPage() {
             </div>
 
             {/* Right Side - Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-24 relative">
-                <Link href="/" className="absolute top-8 right-8 text-sm font-medium tracking-wide text-gray-500 hover:text-black transition-colors">
-                    RETURN HOME
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-24 relative z-10">
+                {/* Mobile Branding */}
+                <div className="absolute top-8 left-8 lg:hidden">
+                    <span className="text-xl font-serif font-bold tracking-[0.2em] text-neutral-900">ELARA</span>
+                </div>
+
+                <Link href="/" className="absolute top-8 right-8 text-[10px] md:text-sm font-medium tracking-wide text-gray-500 hover:text-black transition-colors uppercase">
+                    Return Home
                 </Link>
 
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
-                    className="w-full max-w-md"
+                    className="w-full max-w-md pt-12 lg:pt-0"
                 >
                     <div className="text-center mb-12">
                         <h1 className="text-3xl font-serif font-bold mb-3 text-foreground">
