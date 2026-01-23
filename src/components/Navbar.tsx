@@ -1,14 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, Menu, User, Search, LogOut, LayoutDashboard, Heart, HelpCircle } from 'lucide-react';
+import { ShoppingBag, Menu, User, Search, LogOut, LayoutDashboard, Heart, HelpCircle, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getUserSessionAction, logoutAction } from '@/app/actions/auth-custom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Navbar({ isLanding = false }: { isLanding?: boolean }) {
     const [scrolled, setScrolled] = useState(false);
     const [user, setUser] = useState<{ userId: string; role: string; name?: string | null; email?: string | null } | null>(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -67,9 +69,15 @@ export default function Navbar({ isLanding = false }: { isLanding?: boolean }) {
                             <HelpCircle size={20} />
                         </Link>
 
-                        <Link href="/wishlist" className="hover:text-primary transition-colors group">
-                            <Heart size={20} className="group-hover:fill-primary/20 transition-colors" />
-                        </Link>
+                        {user ? (
+                            <Link href="/wishlist" className="hover:text-primary transition-colors group">
+                                <Heart size={20} className="group-hover:fill-primary/20 transition-colors" />
+                            </Link>
+                        ) : (
+                            <button onClick={() => setShowLoginModal(true)} className="hover:text-primary transition-colors group">
+                                <Heart size={20} className="group-hover:fill-primary/20 transition-colors" />
+                            </button>
+                        )}
 
                         {user ? (
                             <div className="relative group">
@@ -115,6 +123,7 @@ export default function Navbar({ isLanding = false }: { isLanding?: boolean }) {
                                     </button>
                                 </div>
                             </div>
+
                         ) : (
                             <Link href="/login" className="hover:text-primary transition-colors flex items-center gap-2">
                                 <User size={20} />
@@ -122,10 +131,17 @@ export default function Navbar({ isLanding = false }: { isLanding?: boolean }) {
                             </Link>
                         )}
 
-                        <Link href="/cart" className="hover:text-primary transition-colors flex items-center gap-2 relative">
-                            <ShoppingBag size={20} />
-                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">2</span>
-                        </Link>
+                        {user ? (
+                            <Link href="/cart" className="hover:text-primary transition-colors flex items-center gap-2 relative">
+                                <ShoppingBag size={20} />
+                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">2</span>
+                            </Link>
+                        ) : (
+                            <button onClick={() => setShowLoginModal(true)} className="hover:text-primary transition-colors flex items-center gap-2 relative">
+                                <ShoppingBag size={20} />
+                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">2</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             </nav>
@@ -145,8 +161,61 @@ export default function Navbar({ isLanding = false }: { isLanding?: boolean }) {
                     <Link href="/#collections" onClick={() => setMobileMenuOpen(false)} className="hover:text-primary transition-colors">Collections</Link>
                     <Link href="/#story" onClick={() => setMobileMenuOpen(false)} className="hover:text-primary transition-colors">Story</Link>
                     <Link href="/help" onClick={() => setMobileMenuOpen(false)} className="hover:text-primary transition-colors text-lg font-sans uppercase tracking-widest mt-8">Help & Support</Link>
+                    {!user && (
+                        <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="hover:text-primary transition-colors text-lg font-sans uppercase tracking-widest">
+                            Sign In
+                        </Link>
+                    )}
                 </div>
             </div>
+
+            {/* Login Modal */}
+            <AnimatePresence>
+                {showLoginModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+                        onClick={() => setShowLoginModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white p-8 md:p-12 max-w-sm w-full shadow-2xl relative text-center border border-neutral-100"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button
+                                onClick={() => setShowLoginModal(false)}
+                                className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-900 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+
+                            <div className="w-12 h-12 bg-neutral-50 rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
+                                <User size={24} />
+                            </div>
+
+                            <h3 className="font-serif text-2xl text-neutral-900 mb-2">Member Access</h3>
+                            <p className="text-sm text-neutral-500 mb-8 leading-relaxed">
+                                Please sign in to access your account and exclusive collections.
+                            </p>
+
+                            <Link
+                                href="/login"
+                                className="block w-full bg-neutral-900 text-white py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-primary transition-colors mb-4"
+                            >
+                                Sign In
+                            </Link>
+
+                            <p className="text-xs text-neutral-400">
+                                New here? <Link href="/login" className="text-neutral-900 underline hover:text-primary transition-colors">Create an account</Link>
+                            </p>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </>
     );
 }

@@ -4,8 +4,8 @@ import Navbar from "@/components/Navbar";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValue, useMotionTemplate } from "framer-motion";
-import { useRef, useState } from "react";
-import { ArrowRight, Star, Sparkles, Droplets, Flower2, ShoppingBag, Clock, FlaskConical, Fingerprint, X } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
+import { ArrowRight, Star, Sparkles, Droplets, Flower2, ShoppingBag, Clock, FlaskConical, Fingerprint, X, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { checkUserSession } from "@/app/actions/check-session";
 
@@ -28,6 +28,26 @@ export default function LandingPage({ categories, bestSellers }: LandingPageProp
     const containerRef = useRef(null);
     const horizontalRef = useRef(null);
     const router = useRouter();
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
+
+    useEffect(() => {
+        const checkSession = async () => {
+            const hasSession = await checkUserSession();
+            setIsLoggedIn(hasSession);
+        };
+        checkSession();
+    }, []);
+
+
+
+    const handleProductClick = (productId: string) => {
+        router.push(`/shop/${productId}`);
+    };
+
+    const handleCollectionClick = (categoryId: string) => {
+        router.push(`/shop?category=${categoryId}`);
+    };
     const [isProcessing, setIsProcessing] = useState(false);
     const [showStudioModal, setShowStudioModal] = useState(false);
 
@@ -90,26 +110,7 @@ export default function LandingPage({ categories, bestSellers }: LandingPageProp
 
 
     // --- ACTIONS ---
-    const handlePurchaseAttempt = async (productName: string) => {
-        setIsProcessing(true);
-        try {
-            const hasSession = await checkUserSession();
-            if (!hasSession) {
-                alert(`Please login to purchase ${productName}.`);
-                router.push('/login');
-            } else {
-                alert(`${productName} added to cart!`);
-            }
-        } catch (error) {
-            console.error("Auth check failed", error);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
 
-    const handleCustomizationClick = () => {
-        alert("Bespoke Customization Studio coming soon!");
-    };
 
     return (
         <main
@@ -296,6 +297,7 @@ export default function LandingPage({ categories, bestSellers }: LandingPageProp
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true, margin: "-50px" }}
                                     transition={{ duration: 0.8, delay: index * 0.2, ease: "easeOut" }}
+                                    onClick={() => handleCollectionClick(category.id)}
                                     className={`group relative aspect-[3/4] w-full rounded-2xl overflow-hidden cursor-pointer ${index % 2 === 1 ? 'lg:mt-12' : ''}`}
                                 >
                                     {/* Image Container */}
@@ -386,6 +388,7 @@ export default function LandingPage({ categories, bestSellers }: LandingPageProp
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
                                     transition={{ duration: 0.8, delay: index * 0.1 }}
+                                    onClick={() => handleProductClick(product.id)}
                                     className="group cursor-pointer"
                                 >
                                     {/* Image Card - Enhanced */}
@@ -398,7 +401,7 @@ export default function LandingPage({ categories, bestSellers }: LandingPageProp
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handlePurchaseAttempt(product.name);
+                                                    handleProductClick(product.id);
                                                 }}
                                                 className="bg-white text-neutral-900 p-2.5 rounded-full shadow-sm hover:shadow-md hover:scale-105 transition-all"
                                             >
@@ -783,6 +786,53 @@ export default function LandingPage({ categories, bestSellers }: LandingPageProp
                     </div>
                 </footer>
             </div>
+            {/* Login Required Modal */}
+            <AnimatePresence>
+                {showLoginModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+                        onClick={() => setShowLoginModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white p-8 md:p-12 max-w-sm w-full shadow-2xl relative text-center border border-neutral-100"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button
+                                onClick={() => setShowLoginModal(false)}
+                                className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-900 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+
+                            <div className="w-12 h-12 bg-neutral-50 rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
+                                <User size={24} />
+                            </div>
+
+                            <h3 className="font-serif text-2xl text-neutral-900 mb-2">Member Access</h3>
+                            <p className="text-sm text-neutral-500 mb-8 leading-relaxed">
+                                Please sign in to explore our exclusive collections and shop timeless fragrances.
+                            </p>
+
+                            <Link
+                                href="/login"
+                                className="block w-full bg-neutral-900 text-white py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-primary transition-colors mb-4"
+                            >
+                                Sign In
+                            </Link>
+
+                            <p className="text-xs text-neutral-400">
+                                New here? <Link href="/login" className="text-neutral-900 underline hover:text-primary transition-colors">Create an account</Link>
+                            </p>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </main>
     );
 }

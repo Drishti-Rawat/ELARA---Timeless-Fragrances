@@ -2,18 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { getShopProducts } from '../actions/shop';
 import { getCategoriesAction } from '../actions/admin';
 import { Filter, Search, Star } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
 export default function ShopPage() {
+    const searchParams = useSearchParams();
+    const initialCategory = searchParams.get('category') || '';
+
     const [products, setProducts] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Filters
-    const [selectedCategory, setSelectedCategory] = useState<string>('');
+    const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
     const [selectedGender, setSelectedGender] = useState<string>('ALL');
     const [searchQuery, setSearchQuery] = useState('');
     const [minPrice, setMinPrice] = useState<string>('');
