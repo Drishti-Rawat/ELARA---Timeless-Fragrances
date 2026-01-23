@@ -94,12 +94,15 @@ export async function markAsOutForDelivery(orderId: string) {
         });
 
         const { getDeliveryOTPEmail } = await import('@/lib/emailTemplates');
+
+        // ... inside markAsOutForDelivery
+
         await sendEmail({
             to: order.user.email,
             subject: `Out for Delivery - ELARA Order #${orderId.slice(0, 8)}`,
             html: getDeliveryOTPEmail({
                 userName: order.user.name || 'Valued Customer',
-                orderId,
+                orderId: orderId.slice(0, 8).toUpperCase(),
                 otp
             })
         });
@@ -110,20 +113,16 @@ export async function markAsOutForDelivery(orderId: string) {
             data: { status: 'OUT_FOR_DELIVERY' },
         });
 
-        // Optional: Resend OTP if status changed to Out For Delivery again? 
-        // For now, let's resend it to be safe in case they missed the first one.
+        // Resend with nice template
+        const { getDeliveryOTPEmail } = await import('@/lib/emailTemplates');
         await sendEmail({
             to: order.user.email,
             subject: `Reminder: Your Order #${orderId.slice(0, 8)} is Out for Delivery!`,
-            html: `
-            <div style="font-family: sans-serif; color: #333;">
-                <h1>Delivery Reminder</h1>
-                <p>Your order follows. Please share this OTP with the agent:</p>
-                <div style="background: #f4f4f4; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
-                    <span style="font-size: 24px; letter-spacing: 5px; font-weight: bold;">${otp}</span>
-                </div>
-            </div>
-            `
+            html: getDeliveryOTPEmail({
+                userName: order.user.name || 'Valued Customer',
+                orderId: orderId.slice(0, 8).toUpperCase(),
+                otp
+            })
         });
     }
 
@@ -177,7 +176,7 @@ export async function completeDelivery(orderId: string, otp: string) {
         subject: `Order Delivered - ELARA #${orderId.slice(0, 8)}`,
         html: getOrderDeliveredEmail({
             userName: order.user.name || 'Valued Customer',
-            orderId
+            orderId: orderId.slice(0, 8).toUpperCase()
         })
     });
 

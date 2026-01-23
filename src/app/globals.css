@@ -39,6 +39,15 @@
     backdrop-filter: blur(16px);
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @keyframes fadeIn {
@@ -63,8 +72,22 @@
   }
 }
 
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .animate-marquee {
   animation: marquee 20s linear infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s ease-in-out infinite;
 }
 
 /* Reset tweaks */

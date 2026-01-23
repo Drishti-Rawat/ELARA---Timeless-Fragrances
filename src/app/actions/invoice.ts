@@ -25,8 +25,8 @@ export async function generateInvoiceDataAction(orderId: string) {
             }
         });
 
-        if (!order || order.userId !== userId) {
-            return { success: false, error: "Order not found" };
+        if (!order || (order.userId !== userId && session.role !== 'ADMIN')) {
+            return { success: false, error: "Order not found or unauthorized" };
         }
 
         // Format invoice data

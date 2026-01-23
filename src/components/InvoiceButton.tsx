@@ -2,7 +2,7 @@
 
 import { Download } from 'lucide-react';
 
-interface InvoiceData {
+export interface InvoiceData {
     invoiceNumber: string;
     orderNumber: string;
     date: string;
@@ -26,10 +26,9 @@ interface InvoiceData {
     trackingNumber?: string;
 }
 
-export default function InvoiceButton({ invoice }: { invoice: InvoiceData }) {
-    const handleDownload = () => {
-        // Create HTML for invoice
-        const invoiceHTML = `
+export const downloadInvoiceHTML = (invoice: InvoiceData) => {
+    // Create HTML for invoice
+    const invoiceHTML = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -37,76 +36,80 @@ export default function InvoiceButton({ invoice }: { invoice: InvoiceData }) {
     <title>Invoice ${invoice.invoiceNumber}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Arial', sans-serif; padding: 40px; color: #333; }
-        .invoice-container { max-width: 800px; margin: 0 auto; }
-        .header { border-bottom: 3px solid #c6a87c; padding-bottom: 20px; margin-bottom: 30px; }
-        .company-name { font-size: 32px; font-weight: bold; color: #c6a87c; letter-spacing: 2px; }
-        .invoice-title { font-size: 24px; margin-top: 10px; color: #666; }
-        .info-section { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        body { font-family: 'Playfair Display', 'Times New Roman', serif; padding: 40px; color: #1a1a1a; background: #faf9f6; }
+        .invoice-container { max-width: 800px; margin: 0 auto; background: #fff; padding: 40px; border: 1px solid #eee; }
+        .header { border-bottom: 2px solid #c6a87c; padding-bottom: 20px; margin-bottom: 40px; }
+        .company-name { font-size: 32px; font-weight: bold; color: #1a1a1a; letter-spacing: 2px; text-transform: uppercase; }
+        .invoice-title { font-size: 14px; margin-top: 5px; color: #c6a87c; text-transform: uppercase; letter-spacing: 2px; font-weight: bold; }
+        .info-section { display: flex; justify-content: space-between; margin-bottom: 40px; }
         .info-block { flex: 1; }
-        .info-block h3 { font-size: 12px; text-transform: uppercase; color: #999; margin-bottom: 8px; }
-        .info-block p { margin: 4px 0; font-size: 14px; }
-        table { width: 100%; border-collapse: collapse; margin: 30px 0; }
-        th { background: #f5f5f5; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; color: #666; border-bottom: 2px solid #ddd; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .info-block h3 { font-size: 10px; text-transform: uppercase; color: #999; margin-bottom: 10px; letter-spacing: 1px; font-family: sans-serif; }
+        .info-block p { margin: 4px 0; font-size: 14px; line-height: 1.5; }
+        table { width: 100%; border-collapse: collapse; margin: 40px 0; }
+        th { background: #faf9f6; padding: 15px; text-align: left; font-size: 10px; text-transform: uppercase; color: #666; font-family: sans-serif; letter-spacing: 1px; }
+        td { padding: 15px; border-bottom: 1px solid #eee; font-size: 14px; }
         .text-right { text-align: right; }
-        .totals { margin-top: 20px; }
-        .totals-row { display: flex; justify-content: flex-end; padding: 8px 0; }
-        .totals-label { width: 200px; text-align: right; padding-right: 20px; font-weight: 500; }
-        .totals-value { width: 150px; text-align: right; }
-        .total-row { border-top: 2px solid #c6a87c; padding-top: 12px; margin-top: 12px; font-size: 18px; font-weight: bold; }
-        .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 12px; }
-        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-        .status-delivered { background: #d4edda; color: #155724; }
-        .status-shipped { background: #d1ecf1; color: #0c5460; }
-        .status-processing { background: #fff3cd; color: #856404; }
-        .status-pending { background: #f8d7da; color: #721c24; }
+        .totals { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
+        .totals-row { display: flex; justify-content: flex-end; padding: 5px 0; }
+        .totals-label { width: 200px; text-align: right; padding-right: 20px; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+        .totals-value { width: 150px; text-align: right; font-family: sans-serif; }
+        .total-row { padding-top: 15px; margin-top: 10px; border-top: 1px solid #eee; }
+        .total-row .totals-label { color: #1a1a1a; font-weight: bold; }
+        .total-row .totals-value { font-size: 18px; font-weight: bold; color: #c6a87c; }
+        .footer { margin-top: 60px; padding-top: 30px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .status-badge { display: inline-block; padding: 4px 12px; border: 1px solid #eee; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
 <body>
     <div class="invoice-container">
         <div class="header">
-            <div class="company-name">ASHBLOOM</div>
+            <div class="company-name">ELARA</div>
             <div class="invoice-title">Tax Invoice</div>
         </div>
 
         <div class="info-section">
             <div class="info-block">
-                <h3>Invoice To</h3>
+                <h3>Billed To</h3>
                 <p><strong>${invoice.customer.name}</strong></p>
                 <p>${invoice.customer.email}</p>
                 ${invoice.customer.address ? `
-                    <p>${invoice.customer.address.street}</p>
-                    <p>${invoice.customer.address.city}, ${invoice.customer.address.state} ${invoice.customer.address.zip}</p>
-                    <p>${invoice.customer.address.country}</p>
+                    <div style="margin-top: 10px; color: #666;">
+                        <p>${invoice.customer.address.street}</p>
+                        <p>${invoice.customer.address.city}, ${invoice.customer.address.state}</p>
+                        <p>${invoice.customer.address.zip}</p>
+                    </div>
                 ` : ''}
             </div>
 
             <div class="info-block" style="text-align: right;">
                 <h3>Invoice Details</h3>
-                <p><strong>Invoice #:</strong> ${invoice.invoiceNumber}</p>
-                <p><strong>Order #:</strong> ${invoice.orderNumber}</p>
+                <p><strong>Invoice No:</strong> ${invoice.invoiceNumber}</p>
+                <p><strong>Order No:</strong> ${invoice.orderNumber}</p>
                 <p><strong>Date:</strong> ${invoice.date}</p>
-                <p><strong>Status:</strong> <span class="status-badge status-${invoice.status.toLowerCase()}">${invoice.status}</span></p>
-                ${invoice.trackingNumber ? `<p><strong>Tracking:</strong> ${invoice.trackingNumber}</p>` : ''}
+                <p style="margin-top: 10px;">
+                    <span class="status-badge">${invoice.status}</span>
+                </p>
+                ${invoice.trackingNumber ? `<p style="margin-top: 5px; font-size: 12px; color: #c6a87c;">${invoice.trackingNumber}</p>` : ''}
             </div>
         </div>
 
         <table>
             <thead>
                 <tr>
-                    <th>Item</th>
+                    <th>Item Description</th>
                     <th>SKU</th>
                     <th class="text-right">Qty</th>
-                    <th class="text-right">Price</th>
-                    <th class="text-right">Total</th>
+                    <th class="text-right">Unit Price</th>
+                    <th class="text-right">Amount</th>
                 </tr>
             </thead>
             <tbody>
                 ${invoice.items.map(item => `
                     <tr>
-                        <td>${item.name}</td>
-                        <td>${item.sku}</td>
+                        <td>
+                            <div style="font-weight: bold;">${item.name}</div>
+                        </td>
+                        <td style="color: #999; font-size: 12px;">${item.sku}</td>
                         <td class="text-right">${item.quantity}</td>
                         <td class="text-right">₹${item.price.toFixed(2)}</td>
                         <td class="text-right">₹${item.total.toFixed(2)}</td>
@@ -117,49 +120,47 @@ export default function InvoiceButton({ invoice }: { invoice: InvoiceData }) {
 
         <div class="totals">
             <div class="totals-row">
-                <div class="totals-label">Subtotal:</div>
+                <div class="totals-label">Subtotal</div>
                 <div class="totals-value">₹${invoice.subtotal.toFixed(2)}</div>
             </div>
             ${invoice.discount > 0 ? `
-                <div class="totals-row" style="color: #28a745;">
-                    <div class="totals-label">Discount ${invoice.couponCode ? `(${invoice.couponCode})` : ''}:</div>
-                    <div class="totals-value">-₹${invoice.discount.toFixed(2)}</div>
+                <div class="totals-row">
+                    <div class="totals-label">Discount ${invoice.couponCode ? `(${invoice.couponCode})` : ''}</div>
+                    <div class="totals-value" style="color: #28a745;">-₹${invoice.discount.toFixed(2)}</div>
                 </div>
             ` : ''}
             <div class="totals-row total-row">
-                <div class="totals-label">Total:</div>
+                <div class="totals-label">Grand Total</div>
                 <div class="totals-value">₹${invoice.total.toFixed(2)}</div>
             </div>
         </div>
 
         <div class="footer">
-            <p>Thank you for shopping with ELARA!</p>
-            <p>For any queries, contact us at support@elara.com</p>>
+            <p>Thank you for choosing ELARA</p>
+            <p style="margin-top: 5px;">Timeless Fragrances &middot; Luxury Collection</p>
         </div>
     </div>
 </body>
 </html>
-        `;
+    `;
 
-        // Create a blob and download
-        const blob = new Blob([invoiceHTML], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Invoice-${invoice.invoiceNumber}.html`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+    // Create a blob and download
+    const blob = new Blob([invoiceHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Invoice-${invoice.invoiceNumber}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
 
-        // User can open the HTML file and print to PDF
-        alert('Invoice downloaded! Open the file and use "Print to PDF" to save as PDF.');
-    };
-
+export default function InvoiceButton({ invoice }: { invoice: InvoiceData }) {
     return (
         <button
-            onClick={handleDownload}
-            className="flex items-center gap-2 text-sm text-primary hover:underline font-medium"
+            onClick={() => downloadInvoiceHTML(invoice)}
+            className="flex items-center gap-2 text-sm text-[#1a1a1a] hover:text-[#c6a87c] hover:underline font-medium transition-colors"
         >
             <Download size={14} /> Download Invoice
         </button>

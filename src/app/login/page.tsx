@@ -55,7 +55,7 @@ export default function AuthPage() {
             if (res.role === 'ADMIN') {
                 router.push('/admin');
             } else {
-                router.push('/');
+                router.push('/shop');
             }
         } else {
             // New User
@@ -74,7 +74,7 @@ export default function AuthPage() {
         });
 
         if (res.success) {
-            router.push('/');
+            router.push('/shop');
         } else {
             setError(res.error || "Registration failed");
         }
@@ -107,23 +107,25 @@ export default function AuthPage() {
             </div>
 
             {/* Left Side - Image (Desktop) */}
-            <div className="hidden lg:block w-1/2 relative overflow-hidden z-10">
+            <div className="hidden lg:block w-1/2 relative overflow-hidden z-10 group">
                 {/* Desktop Branding Overlay */}
                 <div className="absolute top-8 left-8 z-20">
-                    <span className="text-2xl font-serif font-bold tracking-[0.2em] text-white">ELARA</span>
+                    <span className="text-2xl font-serif font-bold tracking-[0.2em] text-white mix-blend-difference">ELARA</span>
                 </div>
 
                 <Image
                     src="/auth-bg.png"
                     alt="Luxury Perfume"
                     fill
-                    className="object-cover transition-transform duration-700 hover:scale-105"
+                    className="object-cover transition-transform duration-[1.5s] ease-in-out group-hover:scale-105"
                     priority
                 />
-                <div className="absolute inset-0 bg-black/10" />
-                <div className="absolute bottom-10 left-10 text-white z-10">
-                    <p className="text-sm tracking-[0.3em] uppercase mb-2 opacity-90">Collection 2026</p>
-                    <h2 className="text-4xl font-serif">Essence of <br /> Elegance</h2>
+                <div className="absolute inset-0 bg-black/20" />
+
+                {/* Blurring Glass Effect Card */}
+                <div className="absolute bottom-10 left-10 right-10 p-8 bg-white/10 backdrop-blur-md border border-white/20 text-white z-10 opacity-90 transition-opacity duration-500 hover:opacity-100">
+                    <p className="text-[10px] tracking-[0.4em] uppercase mb-4 opacity-80 border-b border-white/30 pb-2 inline-block">Member Privileges</p>
+                    <h2 className="text-3xl font-serif leading-tight">"Scent is the unspoken language of memory."</h2>
                 </div>
             </div>
 
@@ -268,47 +270,66 @@ export default function AuthPage() {
                         )}
                     </AnimatePresence>
 
+                    <div className="mt-12 text-center">
+                        <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400">
+                            Digital Experience by <a href="https://tristella.studio" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-primary transition-colors">Tristella Studio</a>
+                        </p>
+                    </div>
                 </motion.div>
             </div>
 
             <style jsx>{`
         .input-field {
             width: 100%;
-            padding: 0.75rem 1rem 0.75rem 2.75rem; /* Left padding for icons */
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.125rem;
-            font-size: 0.875rem;
+            padding: 0.75rem 0 0.75rem 2.5rem; /* Left padding for icons, no side padding */
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #e5e7eb;
+            border-radius: 0;
+            font-size: 0.95rem; /* Slightly larger text */
+            font-family: serif; /* Editorial feel */
             outline: none;
-            transition: all 0.2s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .input-field:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 1px var(--primary);
+            border-bottom-color: var(--primary);
+            background: linear-gradient(to bottom, transparent 95%, rgba(198, 168, 124, 0.05) 100%);
+        }
+        .input-field::placeholder {
+            font-family: sans-serif;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            opacity: 0.5;
         }
         .btn-block {
             width: 100%;
             background: var(--foreground);
             color: var(--background);
-            padding: 0.875rem;
-            border-radius: 0.125rem;
-            font-weight: 500;
-            letter-spacing: 0.05em;
+            padding: 1rem;
+            border-radius: 2px;
+            font-weight: 600;
+            letter-spacing: 0.2em;
             text-transform: uppercase;
-            font-size: 0.875rem;
+            font-size: 0.75rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s;
+            transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
             cursor: pointer;
-            border: none;
+            border: 1px solid transparent;
+            box-shadow: 0 4px 20px -5px rgba(0,0,0,0.1);
         }
         .btn-block:hover {
             background: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px -10px rgba(198, 168, 124, 0.4);
         }
         .btn-block:disabled {
             opacity: 0.7;
             cursor: not-allowed;
+            transform: none;
         }
       `}</style>
         </div>

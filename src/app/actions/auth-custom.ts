@@ -6,6 +6,7 @@ import { createSession, deleteSession, getSession } from "@/lib/session";
 import { createHash } from 'crypto';
 import { otpEmailRatelimit, otpIpRatelimit } from "@/lib/rate-limit";
 import { headers } from 'next/headers';
+import { generateEmailHtml } from "@/lib/email-templates";
 
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587');
@@ -58,18 +59,25 @@ export async function sendOtpAction(email: string) {
         });
 
         // 5. Send Email (Try/Catch in case SMTP is not configured)
+
+        // ... imports remain the same
+
+        // Inside sendOtpAction:
+        // 5. Send Email (Try/Catch in case SMTP is not configured)
         try {
+            const emailHtml = generateEmailHtml(
+                'Verify Your Identity',
+                `<p>Use the verification code below to sign in to your ELARA account.</p>
+                 <div class="otp-code">${otpCode}</div>
+                 <p>This code expires in 10 minutes. If you did not request this, please ignore this email.</p>`
+            );
+
             await transporter.sendMail({
                 from: SMTP_FROM,
                 to: email,
                 subject: 'Your ELARA Login Code',
                 text: `Your login code is: ${otpCode}. It expires in 10 minutes.`,
-                html: `<div style="font-family: sans-serif; padding: 20px; color: #333;">
-                <h1 style="color: #c6a87c;">ELARA</h1>
-                <p>Your verification code is:</p>
-                <h2 style="letter-spacing: 5px; font-size: 24px;">${otpCode}</h2>
-                <p>This code expires in 10 minutes.</p>
-               </div>`
+                html: emailHtml
             });
             console.log(`[OTP SENT] Email: ${email}, Code: ${otpCode} (Hash: ${hashedOtp.substring(0, 8)}...)`); // Fallback logging
         } catch (emailError) {

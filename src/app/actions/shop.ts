@@ -49,7 +49,21 @@ export async function getShopProducts(params?: {
             take: limit
         });
 
-        // Calculate average rating for each product
+        // Fetch user session for wishlist status
+        const session = await getSession();
+        let wishlistedProductIds = new Set<string>();
+
+        if (session?.userId) {
+            const wishlist = await prisma.wishlist.findUnique({
+                where: { userId: session.userId },
+                include: { items: { select: { productId: true } } }
+            });
+            if (wishlist) {
+                wishlistedProductIds = new Set(wishlist.items.map(item => item.productId));
+            }
+        }
+
+        // Calculate average rating for each product and add wishlist status
         const productsWithRatings = products.map(product => {
             const avgRating = product.reviews.length > 0
                 ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
@@ -57,9 +71,11 @@ export async function getShopProducts(params?: {
 
             return {
                 ...product,
+                price: Number(product.price),
                 averageRating: avgRating,
                 reviewCount: product.reviews.length,
-                reviews: undefined // Remove reviews array from response
+                reviews: undefined, // Remove reviews array from response
+                isInWishlist: wishlistedProductIds.has(product.id)
             };
         });
 
@@ -73,6 +89,9 @@ export async function getShopProducts(params?: {
 
 export async function getProductDetails(id: string) {
     try {
+        const session = await getSession();
+        const userId = session?.userId;
+
         const product = await prisma.product.findUnique({
             where: { id },
             include: {
@@ -86,6 +105,17 @@ export async function getProductDetails(id: string) {
 
         if (!product) return { success: false, error: "Product not found" };
 
+        let isWishlisted = false;
+        if (userId) {
+            const wishlist = await prisma.wishlist.findUnique({
+                where: { userId },
+                include: { items: { where: { productId: id } } }
+            });
+            if (wishlist && wishlist.items.length > 0) {
+                isWishlisted = true;
+            }
+        }
+
         // Fetch similar products (same category, excluding current)
         const similar = await prisma.product.findMany({
             where: {
@@ -96,7 +126,12 @@ export async function getProductDetails(id: string) {
             take: 4
         });
 
-        return { success: true, product, similar };
+        return {
+            success: true,
+            product: { ...product, price: Number(product.price) },
+            similar: similar.map(p => ({ ...p, price: Number(p.price) })),
+            isWishlisted
+        };
 
     } catch (error) {
         console.error("Product Detail Error:", error);
@@ -340,14 +375,21 @@ export async function placeOrderAction(
                 subject: `Order Confirmed - ELARA #${trackingNumber}`,
                 html: getOrderConfirmationEmail({
                     userName: user.name || 'Valued Customer',
-                    orderId: trackingNumber,
+                    orderId: trackingNumber, // Display tracking number as order ID for user simplicity or use real ID
                     trackingNumber,
                     total,
-                    items: items.map(item => ({
-                        name: item.productName || 'Product',
-                        quantity: item.quantity,
-                        price: item.price || 0
-                    }))
+                    items: items.map(item => {
+                        // ... existing item mapping logic ...
+                        let price = Number(item.product?.price || 0);
+                        if (item.product?.isOnSale) {
+                            price = price * (1 - (item.product.salePercentage || 0) / 100);
+                        }
+                        return {
+                            name: item.product?.name || item.productName || 'Product',
+                            quantity: item.quantity,
+                            price: price
+                        };
+                    })
                 })
             });
         }
