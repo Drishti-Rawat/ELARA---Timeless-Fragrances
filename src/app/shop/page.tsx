@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -38,7 +38,9 @@ interface UserSession {
     name?: string | null;
 }
 
-export default function ShopPage() {
+
+
+function ShopContent() {
     const searchParams = useSearchParams();
     const initialCategory = searchParams.get('category') || '';
 
@@ -847,5 +849,21 @@ export default function ShopPage() {
                 />
             )}
         </div >
+    );
+}
+
+export default function ShopPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-surface flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-px h-12 bg-gray-200 overflow-hidden relative">
+                        <div className="absolute top-0 left-0 w-full h-1/2 bg-primary animate-bounce" />
+                    </div>
+                </div>
+            </div>
+        }>
+            <ShopContent />
+        </Suspense>
     );
 }
