@@ -91,19 +91,35 @@ export async function sendOtpAction(email: string) {
             if (process.env.NODE_ENV === 'development') {
                 console.log(`[DEV MODE] OTP sent to ${email}: ${otpCode}`);
             }
-        } catch (emailError) {
-            console.warn("SMTP Failed:", emailError);
+        } catch (emailError: any) {
+            console.error("SMTP Failed Detailed:", {
+                message: emailError.message,
+                code: emailError.code,
+                command: emailError.command
+            });
 
             // Only log OTP in development mode when email fails
             if (process.env.NODE_ENV === 'development') {
                 console.log(`[DEV MODE] OTP for ${email} is: ${otpCode}`);
             }
+
+            // Re-throw if it's a critical configuration error we want to catch in the outer block
+            // OR keep it suppressed if you want OTP to "succeed" even if email fails (not recommended for production)
+            throw new Error(`Email delivery failed: ${emailError.message}`);
         }
 
         return { success: true, message: "OTP sent" };
-    } catch (error) {
-        console.error("Error sending OTP:", error);
-        return { success: false, error: "Failed to send OTP" };
+    } catch (error: any) {
+        console.error("Critical Error sending OTP:", error);
+
+        // Return more specific error message in production logs/response to debug
+        const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
+        return {
+            success: false,
+            error: "Failed to send OTP",
+            debug: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+            details: errorMessage // Temporary: help user see the error in prod response
+        };
     }
 }
 
