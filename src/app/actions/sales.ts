@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getSession } from "@/lib/session";
 import { Gender } from "@prisma/client";
 
 // Bulk apply sale to category
@@ -11,6 +12,9 @@ export async function bulkApplySaleByCategoryAction(
     saleEndDate?: Date
 ) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized", count: 0 };
+
         const result = await prisma.product.updateMany({
             where: { categoryId },
             data: {
@@ -25,7 +29,7 @@ export async function bulkApplySaleByCategoryAction(
         return { success: true, count: result.count };
     } catch (error) {
         console.error("Bulk sale by category error:", error);
-        return { success: false, error: "Failed to apply sale" };
+        return { success: false, error: "Failed to apply sale", count: 0 };
     }
 }
 
@@ -37,6 +41,9 @@ export async function bulkApplySaleByPriceAction(
     saleEndDate?: Date
 ) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized", count: 0 };
+
         const result = await prisma.product.updateMany({
             where: {
                 price: {
@@ -56,7 +63,7 @@ export async function bulkApplySaleByPriceAction(
         return { success: true, count: result.count };
     } catch (error) {
         console.error("Bulk sale by price error:", error);
-        return { success: false, error: "Failed to apply sale" };
+        return { success: false, error: "Failed to apply sale", count: 0 };
     }
 }
 
@@ -67,6 +74,9 @@ export async function bulkApplySaleByGenderAction(
     saleEndDate?: Date
 ) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized", count: 0 };
+
         const result = await prisma.product.updateMany({
             where: { gender },
             data: {
@@ -81,7 +91,7 @@ export async function bulkApplySaleByGenderAction(
         return { success: true, count: result.count };
     } catch (error) {
         console.error("Bulk sale by gender error:", error);
-        return { success: false, error: "Failed to apply sale" };
+        return { success: false, error: "Failed to apply sale", count: 0 };
     }
 }
 
@@ -92,6 +102,9 @@ export async function bulkApplySaleToProductsAction(
     saleEndDate?: Date
 ) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized", count: 0 };
+
         const result = await prisma.product.updateMany({
             where: {
                 id: { in: productIds }
@@ -108,13 +121,16 @@ export async function bulkApplySaleToProductsAction(
         return { success: true, count: result.count };
     } catch (error) {
         console.error("Bulk sale to products error:", error);
-        return { success: false, error: "Failed to apply sale" };
+        return { success: false, error: "Failed to apply sale", count: 0 };
     }
 }
 
 // Clear all sales
 export async function clearAllSalesAction() {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized", count: 0 };
+
         const result = await prisma.product.updateMany({
             data: {
                 salePercentage: 0,
@@ -127,7 +143,7 @@ export async function clearAllSalesAction() {
         return { success: true, count: result.count };
     } catch (error) {
         console.error("Clear sales error:", error);
-        return { success: false, error: "Failed to clear sales" };
+        return { success: false, error: "Failed to clear sales", count: 0 };
     }
 }
 
@@ -139,6 +155,9 @@ export async function getProductsCountByFilterAction(filter: {
     gender?: 'MEN' | 'WOMEN' | 'UNISEX';
 }) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized", count: 0 };
+
         const where: { categoryId?: string; gender?: Gender; price?: { gte?: number; lte?: number } } = {};
 
         if (filter.categoryId) where.categoryId = filter.categoryId;

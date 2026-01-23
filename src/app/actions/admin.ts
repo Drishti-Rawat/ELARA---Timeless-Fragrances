@@ -324,7 +324,10 @@ export async function updateOrderStatusAction(orderId: string, status: string, t
             const otp = Math.floor(1000 + Math.random() * 9000).toString();
             updateData.deliveryOtp = otp;
 
-            console.log(`[NOTIFICATION] Order ${orderId} SHIPPED. OTP sent to customer: ${otp}`);
+            // Only log delivery OTP in development mode
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[DEV MODE] Delivery OTP for order ${orderId}: ${otp}`);
+            }
         } else if (trackingNumber) {
             updateData.trackingNumber = trackingNumber;
         }

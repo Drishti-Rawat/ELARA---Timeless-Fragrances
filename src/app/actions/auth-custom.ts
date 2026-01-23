@@ -5,9 +5,10 @@ import { AddressInput } from "./address";
 import nodemailer from 'nodemailer';
 import { createSession, deleteSession, getSession } from "@/lib/session";
 import { createHash } from 'crypto';
-import { otpEmailRatelimit, otpIpRatelimit } from "@/lib/rate-limit";
+import { otpEmailRatelimit, otpIpRatelimit, loginVerifyRatelimit } from "@/lib/rate-limit";
 import { headers } from 'next/headers';
 import { generateEmailHtml } from "@/lib/email-templates";
+import { isValidEmail, isValidOTP } from "@/lib/validation";
 
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587');
@@ -28,6 +29,11 @@ const transporter = nodemailer.createTransport({
 
 export async function sendOtpAction(email: string) {
     try {
+        // 0. Validate Email
+        if (!isValidEmail(email)) {
+            return { success: false, error: "Invalid email format" };
+        }
+
         // 1. Rate Limiting
         const ip = (await headers()).get('x-forwarded-for') || '127.0.0.1';
 
@@ -80,10 +86,18 @@ export async function sendOtpAction(email: string) {
                 text: `Your login code is: ${otpCode}. It expires in 10 minutes.`,
                 html: emailHtml
             });
-            console.log(`[OTP SENT] Email: ${email}, Code: ${otpCode} (Hash: ${hashedOtp.substring(0, 8)}...)`); // Fallback logging
+
+            // Only log OTP in development mode for debugging
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[DEV MODE] OTP sent to ${email}: ${otpCode}`);
+            }
         } catch (emailError) {
-            console.warn("SMTP Failed (simulating):", emailError);
-            console.log(`[DEV MODE] OTP for ${email} is: ${otpCode}`);
+            console.warn("SMTP Failed:", emailError);
+
+            // Only log OTP in development mode when email fails
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[DEV MODE] OTP for ${email} is: ${otpCode}`);
+            }
         }
 
         return { success: true, message: "OTP sent" };
@@ -95,8 +109,22 @@ export async function sendOtpAction(email: string) {
 
 export async function verifyOtpAction(email: string, code: string) {
     try {
-        // 1. Hash input for verification
-        const hashedInput = createHash('sha256').update(code).digest('hex');
+        // 0. Rate Limiting for verification
+        const { success: rateOk } = await loginVerifyRatelimit.limit(email);
+        if (!rateOk) {
+            return { success: false, error: "Too many attempts. Please try again in 15 minutes." };
+        }
+
+        // 1. Validate inputs
+        if (!isValidEmail(email)) {
+            return { success: false, error: "Invalid email format" };
+        }
+        if (!isValidOTP(code)) {
+            return { success: false, error: "Invalid code format. Must be 6 digits." };
+        }
+
+        // 2. Hash input for verification
+        const hashedInput = createHash('sha256').update(code.trim()).digest('hex');
 
         // 1. Find valid OTP
         const record = await prisma.otp.findFirst({

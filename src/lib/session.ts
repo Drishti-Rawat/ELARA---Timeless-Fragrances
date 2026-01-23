@@ -2,7 +2,13 @@ import 'server-only';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
-const secretKey = process.env.SESSION_SECRET!;
+const secretKey = process.env.SESSION_SECRET;
+if (!secretKey) {
+    throw new Error('SESSION_SECRET environment variable is not set. Please add it to your .env file.');
+}
+if (secretKey.length < 32) {
+    console.warn('⚠️ SESSION_SECRET is shorter than 32 characters. For security, please use a long random string.');
+}
 const key = new TextEncoder().encode(secretKey);
 
 const COOKIE_NAME = process.env.COOKIE_NAME!;

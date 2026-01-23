@@ -135,6 +135,11 @@ export async function completeDelivery(orderId: string, otp: string) {
         throw new Error('Unauthorized');
     }
 
+    // Validate OTP format (4 digits)
+    if (!otp || !/^\d{4}$/.test(otp.trim())) {
+        return { success: false, message: 'Invalid OTP format. Must be 4 digits.' };
+    }
+
     const order = await prisma.order.findUnique({
         where: { id: orderId },
         include: { user: true }

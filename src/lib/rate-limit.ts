@@ -36,3 +36,11 @@ export const couponRatelimit = new Ratelimit({
     prefix: 'ratelimit:coupon',
 });
 
+// Login Verification Limiter: 5 attempts per 15 minutes per email
+export const loginVerifyRatelimit = new Ratelimit({
+    redis: redis,
+    limiter: Ratelimit.slidingWindow(5, '900 s'),
+    analytics: true,
+    prefix: 'ratelimit:login_verify',
+});
+

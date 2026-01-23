@@ -276,6 +276,23 @@ export async function getCartAction() {
 
 export async function updateCartItemAction(itemId: string, quantity: number) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
+
+        // Verify the cart item belongs to the current user
+        const cartItem = await prisma.cartItem.findFirst({
+            where: {
+                id: itemId,
+                cart: {
+                    userId: session.userId
+                }
+            }
+        });
+
+        if (!cartItem) {
+            return { success: false, error: "Cart item not found or access denied" };
+        }
+
         if (quantity <= 0) {
             await prisma.cartItem.delete({ where: { id: itemId } });
         } else {
@@ -286,7 +303,8 @@ export async function updateCartItemAction(itemId: string, quantity: number) {
         }
         revalidatePath('/cart');
         return { success: true };
-    } catch {
+    } catch (error) {
+        console.error("Update cart item error:", error);
         return { success: false, error: "Failed to update cart" };
     }
 }

@@ -57,7 +57,7 @@ export default function AdminSalesPage() {
 
         const res = await getProductsCountByFilterAction(filter);
         if (res.success) {
-            setPreviewCount(res.count);
+            setPreviewCount(res.count ?? 0);
         }
     };
 
@@ -152,7 +152,7 @@ export default function AdminSalesPage() {
                         setGenderFilter('MEN');
                         setSalePercentage('25');
                         const res = await getProductsCountByFilterAction({ gender: 'MEN' });
-                        if (res.success) setPreviewCount(res.count);
+                        if (res.success) setPreviewCount(res.count ?? 0);
                     }}
                     className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-all"
                 >
@@ -168,7 +168,7 @@ export default function AdminSalesPage() {
                         setGenderFilter('WOMEN');
                         setSalePercentage('25');
                         const res = await getProductsCountByFilterAction({ gender: 'WOMEN' });
-                        if (res.success) setPreviewCount(res.count);
+                        if (res.success) setPreviewCount(res.count ?? 0);
                     }}
                     className="bg-gradient-to-br from-pink-500 to-pink-600 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-all"
                 >
@@ -184,7 +184,7 @@ export default function AdminSalesPage() {
                         setMinPrice('3000');
                         setSalePercentage('30');
                         const res = await getProductsCountByFilterAction({ minPrice: 3000 });
-                        if (res.success) setPreviewCount(res.count);
+                        if (res.success) setPreviewCount(res.count ?? 0);
                     }}
                     className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-all"
                 >
