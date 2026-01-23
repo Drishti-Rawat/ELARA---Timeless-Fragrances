@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 // This endpoint should be called periodically (e.g., every hour) by a cron service
 // You can use Vercel Cron Jobs or external services like cron-job.org
 export async function GET(request: Request) {
