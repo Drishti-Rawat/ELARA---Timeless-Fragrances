@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getAnalyticsDataAction, AnalyticsPeriod } from '@/app/actions/analytics';
-import { BarChart3, TrendingUp, DollarSign, ShoppingBag, Calendar, PieChart as PieIcon, LineChart as LineIcon, Users, AlertTriangle, Package, Info, Star } from 'lucide-react';
+import { BarChart3, TrendingUp, DollarSign, ShoppingBag, Calendar, PieChart as PieIcon, LineChart as LineIcon, Users, AlertTriangle, Package, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -11,30 +11,50 @@ import {
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F'];
 
+interface AnalyticsData {
+    totalRevenue: number;
+    totalCommissions: number;
+    totalOrders: number;
+    averageOrderValue: number;
+    newCustomersCount: number;
+    chartData: { name: string; revenue: number }[];
+    productData: { name: string; sales: number }[];
+    categoryData: { name: string; value: number }[];
+    statusData: { name: string; value: number }[];
+    genderData: { name: string; revenue: number }[];
+    lowStockProducts: { id: string; name: string; price: number | string; stock: number }[];
+    averageRating: number;
+    totalReviews: number;
+    ratingDistribution: { rating: number; count: number }[];
+}
+
 export default function AnalyticsPage() {
     const [period, setPeriod] = useState<AnalyticsPeriod>('week');
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<AnalyticsData | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         const res = await getAnalyticsDataAction(period);
         if (res.success) {
-            setData(res);
+            setData(res as unknown as AnalyticsData);
         }
         setLoading(false);
-    };
+    }, [period]);
 
     useEffect(() => {
-        fetchData();
-    }, [period]);
+        const fetch = async () => {
+            await fetchData();
+        };
+        fetch();
+    }, [fetchData]);
 
     return (
         <div className="space-y-8 pb-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-serif font-bold text-gray-900">Analytics</h2>
-                    <p className="text-gray-500 mt-1">Monitor your store's performance.</p>
+                    <p className="text-gray-500 mt-1">Monitor your store&apos;s performance.</p>
                 </div>
 
                 {/* Period Selector */}
@@ -211,8 +231,7 @@ export default function AnalyticsPage() {
                                         <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} tickMargin={10} axisLine={false} tickLine={false} />
                                         <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(val) => `₹${val}`} axisLine={false} tickLine={false} />
                                         <Tooltip
-                                            contentStyle={{ borderRadius: '4px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                            formatter={(value: any) => [`₹${Number(value).toFixed(2)}`, 'Revenue']}
+                                            formatter={(value: number | string | undefined) => [`₹${Number(value || 0).toFixed(2)}`, 'Revenue']}
                                         />
                                         <Line type="monotone" dataKey="revenue" stroke="#8884d8" strokeWidth={3} dot={{ r: 4, fill: '#8884d8' }} activeDot={{ r: 6 }} />
                                     </LineChart>
@@ -273,16 +292,16 @@ export default function AnalyticsPage() {
                                             paddingAngle={5}
                                             dataKey="value"
                                         >
-                                            {data?.categoryData?.map((entry: any, index: number) => (
+                                            {data?.categoryData?.map((_entry, index: number) => (
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
                                             ))}
                                         </Pie>
-                                        <Tooltip formatter={(value: any, name: any, props: any) => [`${value} sold`, props.payload.name]} />
+                                        <Tooltip formatter={(value: number | string | undefined, _name: string | number | undefined, item: { payload?: { name?: string } }) => [`${Number(value || 0)} sold`, item.payload?.name || '']} />
                                         <Legend verticalAlign="bottom" height={36} iconType="circle" />
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8 text-center">
-                                    <span className="text-2xl font-bold text-gray-900">{data?.categoryData?.reduce((a: any, b: any) => a + b.value, 0) || 0}</span>
+                                    <span className="text-2xl font-bold text-gray-900">{data?.categoryData?.reduce((a, b) => a + b.value, 0) || 0}</span>
                                     <span className="text-[10px] uppercase tracking-wide text-gray-400">Total Items</span>
                                 </div>
                             </div>
@@ -312,17 +331,17 @@ export default function AnalyticsPage() {
                                             paddingAngle={5}
                                             dataKey="value"
                                         >
-                                            {data?.statusData?.map((entry: any, index: number) => {
+                                            {data?.statusData?.map((entry: { name: string; value: number }, index: number) => {
                                                 const color = entry.name === 'Cancelled' ? '#ff4d4f' : '#52c41a';
                                                 return <Cell key={`cell-${index}`} fill={color} stroke="none" />;
                                             })}
                                         </Pie>
-                                        <Tooltip formatter={(value: any, name: any, props: any) => [`${value} orders`, props.payload.name]} />
+                                        <Tooltip formatter={(value: number | string | undefined, _name: string | number | undefined, item: { payload?: { name?: string } }) => [`${Number(value || 0)} orders`, item.payload?.name || '']} />
                                         <Legend verticalAlign="bottom" height={36} iconType="circle" />
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8 text-center">
-                                    <span className="text-2xl font-bold text-gray-900">{data?.statusData?.reduce((a: any, b: any) => a + b.value, 0) || 0}</span>
+                                    <span className="text-2xl font-bold text-gray-900">{data?.statusData?.reduce((a, b) => a + b.value, 0) || 0}</span>
                                     <span className="text-[10px] uppercase tracking-wide text-gray-400">Total Orders</span>
                                 </div>
                             </div>
@@ -352,7 +371,7 @@ export default function AnalyticsPage() {
                                             paddingAngle={5}
                                             dataKey="revenue"
                                         >
-                                            {data?.genderData?.map((entry: any, index: number) => {
+                                            {data?.genderData?.map((entry: { name: string; revenue: number }, index: number) => {
                                                 let color = '#8884d8';
                                                 if (entry.name === 'MEN') color = '#1890ff';
                                                 else if (entry.name === 'WOMEN') color = '#ff85c0';
@@ -361,12 +380,12 @@ export default function AnalyticsPage() {
                                                 return <Cell key={`cell-${index}`} fill={color} stroke="none" />;
                                             })}
                                         </Pie>
-                                        <Tooltip formatter={(value: any, name: any, props: any) => [`₹${Number(value).toFixed(2)}`, props.payload.name]} />
+                                        <Tooltip formatter={(value: number | string | undefined, _name: string | number | undefined, item: { payload?: { name?: string } }) => [`₹${Number(value || 0).toFixed(2)}`, item.payload?.name || '']} />
                                         <Legend verticalAlign="bottom" height={36} iconType="circle" />
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8 text-center">
-                                    <span className="text-2xl font-bold text-gray-900">₹{data?.genderData?.reduce((a: any, b: any) => a + b.revenue, 0).toFixed(0) || 0}</span>
+                                    <span className="text-2xl font-bold text-gray-900">₹{data?.genderData?.reduce((a, b) => a + b.revenue, 0).toFixed(0) || 0}</span>
                                     <span className="text-[10px] uppercase tracking-wide text-gray-400">Total Revenue</span>
                                 </div>
                             </div>
@@ -386,7 +405,7 @@ export default function AnalyticsPage() {
                             </div>
                             <div className="space-y-3">
                                 {data?.lowStockProducts && data.lowStockProducts.length > 0 ? (
-                                    data.lowStockProducts.map((product: any) => (
+                                    data.lowStockProducts.map((product) => (
                                         <div key={product.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-md border border-orange-100">
                                             <div className="flex-1">
                                                 <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
@@ -439,7 +458,7 @@ export default function AnalyticsPage() {
 
                                 {/* Rating Distribution */}
                                 <div className="space-y-2">
-                                    {data?.ratingDistribution?.map((item: any) => {
+                                    {data?.ratingDistribution?.map((item) => {
                                         const percentage = data.totalReviews > 0
                                             ? (item.count / data.totalReviews) * 100
                                             : 0;

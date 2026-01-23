@@ -1,24 +1,51 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { getShopProducts } from '../actions/shop';
 import { getCategoriesAction } from '../actions/admin';
-import { Filter, Search, X, Heart, ShoppingBag, User, ArrowRight, Check } from 'lucide-react';
+import { Search, X, Heart, ShoppingBag, User } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { addToCartAction, toggleWishlistAction } from '../actions/shop';
 import { getUserSessionAction } from '../actions/auth-custom';
 
+interface Category {
+    id: string;
+    name: string;
+}
+
+interface Product {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    stock: number;
+    images: string[];
+    categoryId: string;
+    category?: Category;
+    gender: string;
+    isOnSale: boolean;
+    salePercentage: number;
+    isInWishlist?: boolean;
+}
+
+interface UserSession {
+    id: string;
+    email: string;
+    name?: string | null;
+}
+
 export default function ShopPage() {
     const searchParams = useSearchParams();
     const initialCategory = searchParams.get('category') || '';
 
-    const [products, setProducts] = useState<any[]>([]);
-    const [categories, setCategories] = useState<any[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<UserSession | null>(null);
     const [showLoginModal, setShowLoginModal] = useState(false);
 
     // Filters
@@ -39,11 +66,11 @@ export default function ShopPage() {
     useEffect(() => {
         // Load initial data
         getCategoriesAction().then(res => {
-            if (res.success) setCategories(res.categories || []);
+            if (res.success) setCategories(res.categories as Category[] || []);
         });
         // Load user session
         getUserSessionAction().then(session => {
-            setUser(session);
+            setUser(session as UserSession | null);
         });
     }, []);
 
@@ -61,7 +88,7 @@ export default function ShopPage() {
                 limit: 9
             });
             if (res.success) {
-                setProducts(res.products || []);
+                setProducts(res.products as unknown as Product[] || []);
                 setHasMore((res.products?.length || 0) === 9);
                 setPage(1);
             }
@@ -72,7 +99,7 @@ export default function ShopPage() {
         return () => clearTimeout(timeoutId);
     }, [selectedCategory, selectedGender, searchQuery, minPrice, maxPrice]);
 
-    const loadMore = async () => {
+    const loadMore = useCallback(async () => {
         if (isFetchingMore || !hasMore) return;
 
         setIsFetchingMore(true);
@@ -88,7 +115,7 @@ export default function ShopPage() {
         });
 
         if (res.success) {
-            const newProducts = res.products || [];
+            const newProducts = res.products as unknown as Product[] || [];
             if (newProducts.length > 0) {
                 setProducts(prev => [...prev, ...newProducts]);
                 setPage(nextPage);
@@ -96,7 +123,7 @@ export default function ShopPage() {
             setHasMore(newProducts.length === 9);
         }
         setIsFetchingMore(false);
-    };
+    }, [isFetchingMore, hasMore, page, selectedCategory, selectedGender, searchQuery, minPrice, maxPrice]);
 
     // Intersection Observer for Infinite Scroll
     useEffect(() => {
@@ -113,23 +140,23 @@ export default function ShopPage() {
         if (target) observer.observe(target);
 
         return () => observer.disconnect();
-    }, [hasMore, loading, isFetchingMore, page, selectedCategory, selectedGender, searchQuery, minPrice, maxPrice]);
+    }, [hasMore, loading, isFetchingMore, loadMore]);
 
     const activeFiltersCount = [selectedCategory, selectedGender !== 'ALL', minPrice, maxPrice].filter(Boolean).length;
 
     return (
-        <div className="min-h-screen bg-[#faf9f6] text-neutral-900 selection:bg-[#c6a87c]/30">
+        <div className="min-h-screen bg-surface text-neutral-900 selection:bg-primary/30">
             <Navbar />
 
             {/* --- COSMIC HEADER --- */}
             <div className="relative pt-32 pb-6 sm:pb-20 px-6 overflow-hidden">
                 {/* 1. Large Watermark Text - Fills the empty space */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[15vw] font-serif text-[#c6a87c]/5 pointer-events-none select-none whitespace-nowrap z-0 tracking-tighter">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[15vw] font-serif text-primary/5 pointer-events-none select-none whitespace-nowrap z-0 tracking-tighter">
                     TIMELESS
                 </div>
 
                 {/* 2. Decorative Blobs */}
-                <div className="absolute top-0 right-0 w-[50vw] h-[50vw] bg-[#c6a87c]/10 rounded-full blur-[120px] pointer-events-none translate-x-1/3 -translate-y-1/3" />
+                <div className="absolute top-0 right-0 w-[50vw] h-[50vw] bg-primary/10 rounded-full blur-[120px] pointer-events-none translate-x-1/3 -translate-y-1/3" />
                 <div className="absolute bottom-0 left-0 w-[40vw] h-[40vw] bg-neutral-200/50 rounded-full blur-[100px] pointer-events-none -translate-x-1/3 translate-y-1/3 opacity-50" />
 
                 <div className="container mx-auto max-w-7xl relative z-10 flex flex-col md:flex-row items-end justify-between gap-12">
@@ -141,8 +168,8 @@ export default function ShopPage() {
                         className="max-w-2xl"
                     >
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="h-px w-12 bg-[#c6a87c]" />
-                            <span className="text-[#c6a87c] uppercase tracking-[0.3em] text-[10px] md:text-xs font-bold">
+                            <div className="h-px w-12 bg-primary" />
+                            <span className="text-primary uppercase tracking-[0.3em] text-[10px] md:text-xs font-bold">
                                 Official Boutique
                             </span>
                         </div>
@@ -162,11 +189,11 @@ export default function ShopPage() {
                         transition={{ duration: 0.8, delay: 0.2 }}
                         className="hidden md:flex flex-col items-end text-right gap-4 mb-2"
                     >
-                        <div className="w-32 h-32 rounded-full border border-[#c6a87c]/30 flex items-center justify-center relative group cursor-default backdrop-blur-sm">
-                            <div className="absolute inset-0 rounded-full bg-[#c6a87c]/5 animate-pulse" />
+                        <div className="w-32 h-32 rounded-full border border-primary/30 flex items-center justify-center relative group cursor-default backdrop-blur-sm">
+                            <div className="absolute inset-0 rounded-full bg-primary/5 animate-pulse" />
                             <div className="text-center">
                                 <span className="block text-3xl font-serif text-neutral-900">{products.length}</span>
-                                <span className="text-[9px] uppercase tracking-widest text-[#c6a87c] block mt-1">Elixirs</span>
+                                <span className="text-[9px] uppercase tracking-widest text-primary block mt-1">Elixirs</span>
                             </div>
                         </div>
                     </motion.div>
@@ -183,11 +210,11 @@ export default function ShopPage() {
                         </span>
                         <button
                             onClick={() => setShowFilters(true)}
-                            className="flex items-center gap-2 px-5 py-3 bg-[#1a1a1a] text-[#faf9f6] rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-[#c6a87c] transition-all"
+                            className="flex items-center gap-2 px-5 py-3 bg-foreground text-surface rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-primary transition-all"
                         >
                             Filters
                             {activeFiltersCount > 0 && (
-                                <span className="bg-[#faf9f6] text-[#1a1a1a] rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold">
+                                <span className="bg-surface text-foreground rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold">
                                     {activeFiltersCount}
                                 </span>
                             )}
@@ -202,13 +229,13 @@ export default function ShopPage() {
 
                             {/* Search */}
                             <div className="relative group">
-                                <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-[#c6a87c] transition-colors" size={16} />
+                                <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-primary transition-colors" size={16} />
                                 <input
                                     type="text"
                                     placeholder="Search..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-transparent border-b border-neutral-200 py-2 pl-6 text-sm font-medium focus:outline-none focus:border-[#c6a87c] transition-colors placeholder:font-light placeholder:text-neutral-400 placeholder:italic"
+                                    className="w-full bg-transparent border-b border-neutral-200 py-2 pl-6 text-sm font-medium focus:outline-none focus:border-primary transition-colors placeholder:font-light placeholder:text-neutral-400 placeholder:italic"
                                 />
                             </div>
 
@@ -234,7 +261,7 @@ export default function ShopPage() {
                                 <div className="space-y-3">
                                     {['ALL', 'WOMEN', 'MEN', 'UNISEX'].map(gender => (
                                         <label key={gender} className="flex items-center gap-3 cursor-pointer group">
-                                            <div className={`w-3 h-3 border rounded-sm flex items-center justify-center transition-all ${selectedGender === gender ? 'border-[#c6a87c] bg-[#c6a87c]' : 'border-neutral-300 group-hover:border-neutral-400'}`}>
+                                            <div className={`w-3 h-3 border rounded-sm flex items-center justify-center transition-all ${selectedGender === gender ? 'border-primary bg-primary' : 'border-neutral-300 group-hover:border-neutral-400'}`}>
                                             </div>
                                             <input
                                                 type="radio"
@@ -256,14 +283,14 @@ export default function ShopPage() {
                                 <h4 className="font-serif text-lg text-neutral-900 mb-4">Collection</h4>
                                 <div className="space-y-3">
                                     <label className="flex items-center gap-3 cursor-pointer group">
-                                        <div className={`w-3 h-3 border rounded-sm flex items-center justify-center transition-all ${selectedCategory === '' ? 'border-[#c6a87c] bg-[#c6a87c]' : 'border-neutral-300 group-hover:border-neutral-400'}`}>
+                                        <div className={`w-3 h-3 border rounded-sm flex items-center justify-center transition-all ${selectedCategory === '' ? 'border-primary bg-primary' : 'border-neutral-300 group-hover:border-neutral-400'}`}>
                                         </div>
                                         <input type="radio" name="category" className="hidden" onChange={() => setSelectedCategory('')} checked={selectedCategory === ''} />
                                         <span className={`text-xs uppercase tracking-wider transition-colors ${selectedCategory === '' ? 'text-neutral-900 font-bold' : 'text-neutral-500 group-hover:text-neutral-800'}`}>All Collections</span>
                                     </label>
                                     {categories.map(cat => (
                                         <label key={cat.id} className="flex items-center gap-3 cursor-pointer group">
-                                            <div className={`w-3 h-3 border rounded-sm flex items-center justify-center transition-all ${selectedCategory === cat.id ? 'border-[#c6a87c] bg-[#c6a87c]' : 'border-neutral-300 group-hover:border-neutral-400'}`}>
+                                            <div className={`w-3 h-3 border rounded-sm flex items-center justify-center transition-all ${selectedCategory === cat.id ? 'border-primary bg-primary' : 'border-neutral-300 group-hover:border-neutral-400'}`}>
                                             </div>
                                             <input type="radio" name="category" className="hidden" onChange={() => setSelectedCategory(cat.id)} checked={selectedCategory === cat.id} />
                                             <span className={`text-xs uppercase tracking-wider transition-colors ${selectedCategory === cat.id ? 'text-neutral-900 font-bold' : 'text-neutral-500 group-hover:text-neutral-800'}`}>{cat.name}</span>
@@ -276,14 +303,14 @@ export default function ShopPage() {
                             <div>
                                 <h4 className="font-serif text-lg text-neutral-900 mb-4 flex justify-between items-end">
                                     <span>Price</span>
-                                    <span className="text-[10px] text-[#c6a87c] font-sans tracking-widest">${minPrice || 0} - ${maxPrice || 500}</span>
+                                    <span className="text-[10px] text-primary font-sans tracking-widest">${minPrice || 0} - ${maxPrice || 500}</span>
                                 </h4>
 
                                 <div className="px-1 relative h-6 mb-6">
                                     {/* Track */}
                                     <div className="absolute top-1/2 -translate-y-1/2 w-full h-px bg-neutral-200">
                                         <div
-                                            className="absolute h-full bg-[#c6a87c] transition-all duration-300"
+                                            className="absolute h-full bg-primary transition-all duration-300"
                                             style={{
                                                 left: `${(Number(minPrice) / 500) * 100}%`,
                                                 right: `${100 - (Number(maxPrice || 500) / 500) * 100}%`
@@ -302,7 +329,7 @@ export default function ShopPage() {
                                             const val = Math.min(Number(e.target.value), Number(maxPrice || 500) - 25);
                                             setMinPrice(val.toString());
                                         }}
-                                        className="absolute w-full h-0.5 top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:bg-[#c6a87c] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-125"
+                                        className="absolute w-full h-0.5 top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-125"
                                     />
 
                                     {/* Max Slider */}
@@ -316,7 +343,7 @@ export default function ShopPage() {
                                             const val = Math.max(Number(e.target.value), Number(minPrice || 0) + 25);
                                             setMaxPrice(val.toString());
                                         }}
-                                        className="absolute w-full h-0.5 top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:bg-[#c6a87c] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-125"
+                                        className="absolute w-full h-0.5 top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-125"
                                     />
                                 </div>
                             </div>
@@ -330,7 +357,7 @@ export default function ShopPage() {
                             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-12">
                                 {[1, 2, 3, 4, 5, 6].map(i => (
                                     <div key={i} className="space-y-4">
-                                        <div className="aspect-[4/5] bg-neutral-100 animate-pulse rounded-sm" />
+                                        <div className="aspect-4/5 bg-neutral-100 animate-pulse rounded-sm" />
                                         <div className="h-4 bg-neutral-100 w-3/4 rounded-sm" />
                                         <div className="h-4 bg-neutral-100 w-1/2 rounded-sm" />
                                     </div>
@@ -358,16 +385,20 @@ export default function ShopPage() {
                                                 className="group flex flex-col h-full"
                                             >
                                                 {/* Image Container */}
-                                                <div className="relative aspect-[4/5] overflow-hidden bg-white mb-4 md:mb-6 border border-neutral-200/60 transition-all duration-500 group-hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] rounded-sm">
+                                                <div className="relative aspect-4/5 overflow-hidden bg-white mb-4 md:mb-6 border border-neutral-200/60 transition-all duration-500 group-hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] rounded-sm">
                                                     <Link href={`./shop/${product.id}`} className="block w-full h-full">
                                                         {/* Primary Image */}
                                                         {product.images[0] ? (
-                                                            <img
-                                                                id={`product-img-${product.id}`}
-                                                                src={product.images[0]}
-                                                                alt={product.name}
-                                                                className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-105"
-                                                            />
+                                                            <div className="absolute inset-0 w-full h-full">
+                                                                <Image
+                                                                    id={`product-img-${product.id}`}
+                                                                    src={product.images[0]}
+                                                                    alt={product.name}
+                                                                    fill
+                                                                    sizes="(max-width: 768px) 50vw, 33vw"
+                                                                    className="object-cover transition-all duration-700 ease-out group-hover:scale-105"
+                                                                />
+                                                            </div>
                                                         ) : (
                                                             <div className="absolute inset-0 w-full h-full bg-[#f4f1ea] flex items-center justify-center text-neutral-300 font-serif italic text-3xl">
                                                                 Elara
@@ -376,17 +407,25 @@ export default function ShopPage() {
 
                                                         {/* Secondary Image (Hover) */}
                                                         {product.images[1] ? (
-                                                            <img
-                                                                src={product.images[1]}
-                                                                alt={product.name}
-                                                                className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out opacity-0 group-hover:opacity-100 group-hover:scale-105"
-                                                            />
+                                                            <div className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out group-hover:scale-105">
+                                                                <Image
+                                                                    src={product.images[1]}
+                                                                    alt={product.name}
+                                                                    fill
+                                                                    sizes="(max-width: 768px) 50vw, 33vw"
+                                                                    className="object-cover"
+                                                                />
+                                                            </div>
                                                         ) : (
-                                                            <img
-                                                                src={product.images[0]}
-                                                                alt={product.name}
-                                                                className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out opacity-0 group-hover:opacity-100 group-hover:scale-105"
-                                                            />
+                                                            <div className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out group-hover:scale-105">
+                                                                <Image
+                                                                    src={product.images[0]}
+                                                                    alt={product.name}
+                                                                    fill
+                                                                    sizes="(max-width: 768px) 50vw, 33vw"
+                                                                    className="object-cover"
+                                                                />
+                                                            </div>
                                                         )}
                                                     </Link>
 
@@ -401,7 +440,7 @@ export default function ShopPage() {
                                                             }
 
                                                             // Optimistic Update
-                                                            const isCurrentlyWishlisted = (product as any).isInWishlist;
+                                                            const isCurrentlyWishlisted = product.isInWishlist;
                                                             setProducts(prev => prev.map(p =>
                                                                 p.id === product.id
                                                                     ? { ...p, isInWishlist: !isCurrentlyWishlisted }
@@ -418,11 +457,11 @@ export default function ShopPage() {
                                                                 ));
                                                             }
                                                         }}
-                                                        className={`absolute top-3 right-3 p-2.5 rounded-full backdrop-blur-sm transition-all duration-300 hover:bg-white hover:text-red-500 ${(product as any).isInWishlist ? "opacity-100 bg-white text-red-500" : "opacity-0 group-hover:opacity-100 bg-white/80 text-neutral-400"}`}
+                                                        className={`absolute top-3 right-3 p-2.5 rounded-full backdrop-blur-sm transition-all duration-300 hover:bg-white hover:text-red-500 ${product.isInWishlist ? "opacity-100 bg-white text-red-500" : "opacity-0 group-hover:opacity-100 bg-white/80 text-neutral-400"}`}
                                                     >
                                                         <Heart
                                                             size={16}
-                                                            className={(product as any).isInWishlist ? "fill-red-500 text-red-500" : ""}
+                                                            className={product.isInWishlist ? "fill-red-500 text-red-500" : ""}
                                                         />
                                                     </button>
 
@@ -446,11 +485,11 @@ export default function ShopPage() {
                                                 {/* Card Content */}
                                                 <div className="flex flex-col flex-1 pl-1">
                                                     {/* Category */}
-                                                    <p className="text-[10px] text-[#c6a87c] uppercase tracking-[0.25em] font-bold mb-2">
+                                                    <p className="text-[10px] text-primary uppercase tracking-[0.25em] font-bold mb-2">
                                                         {product.category?.name}
                                                     </p>
 
-                                                    <Link href={`./shop/${product.id}`} className="group-hover:text-[#c6a87c] transition-colors">
+                                                    <Link href={`./shop/${product.id}`} className="group-hover:text-primary transition-colors">
                                                         <h3 className="font-serif text-sm md:text-2xl text-neutral-900 leading-tight mb-2">
                                                             {product.name}
                                                         </h3>
@@ -495,7 +534,7 @@ export default function ShopPage() {
                                                                     // Visual Feedback
                                                                     const originalHTML = btn.innerHTML;
                                                                     btn.innerHTML = '<span class="flex items-center gap-2">Added <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
-                                                                    btn.classList.add('bg-[#1a1a1a]', 'text-white', 'border-[#1a1a1a]');
+                                                                    btn.classList.add('bg-foreground', 'text-white', 'border-foreground');
 
                                                                     // Animation Trigger
                                                                     const imgEl = cardEl?.querySelector('img');
@@ -524,12 +563,12 @@ export default function ShopPage() {
 
                                                                     setTimeout(() => {
                                                                         btn.innerHTML = originalHTML;
-                                                                        btn.classList.remove('bg-[#1a1a1a]', 'text-white', 'border-[#1a1a1a]');
+                                                                        btn.classList.remove('bg-foreground', 'text-white', 'border-foreground');
                                                                     }, 2000);
                                                                 }
                                                             }}
                                                             disabled={product.stock <= 0}
-                                                            className="w-full py-3 border border-neutral-300 text-neutral-900 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] hover:border-[#c6a87c] hover:text-[#c6a87c] transition-all flex items-center justify-center gap-2 group/btn"
+                                                            className="w-full py-3 border border-neutral-300 text-neutral-900 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2 group/btn"
                                                         >
                                                             {product.stock > 0 ? (
                                                                 <>
@@ -550,7 +589,7 @@ export default function ShopPage() {
                                     {isFetchingMore && (
                                         <div className="flex flex-col items-center gap-4">
                                             <div className="w-px h-12 bg-gray-200 overflow-hidden relative">
-                                                <div className="absolute top-0 left-0 w-full h-1/2 bg-[#c6a87c] animate-bounce" />
+                                                <div className="absolute top-0 left-0 w-full h-1/2 bg-primary animate-bounce" />
                                             </div>
                                             <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Discovering More</span>
                                         </div>
@@ -569,7 +608,7 @@ export default function ShopPage() {
                                 animate={{ opacity: 1, y: 0 }}
                                 className="text-center py-32 border border-dashed border-neutral-200 rounded-sm"
                             >
-                                <div className="w-16 h-16 bg-[#faf9f6] rounded-full flex items-center justify-center mx-auto mb-6 border border-neutral-200">
+                                <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto mb-6 border border-neutral-200">
                                     <Search size={24} className="text-neutral-400" />
                                 </div>
                                 <h3 className="font-serif text-3xl text-neutral-400 mb-3">No essence found</h3>
@@ -582,7 +621,7 @@ export default function ShopPage() {
                                         setMaxPrice('');
                                         setSearchQuery('');
                                     }}
-                                    className="px-8 py-3 bg-[#1a1a1a] text-white text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-[#c6a87c] transition-colors"
+                                    className="px-8 py-3 bg-foreground text-white text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-primary transition-colors"
                                 >
                                     Clear Filters
                                 </button>
@@ -608,7 +647,7 @@ export default function ShopPage() {
                             animate={{ y: 0 }}
                             exit={{ y: '100%' }}
                             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                            className="fixed bottom-0 left-0 right-0 bg-[#faf9f6] z-50 max-h-[85vh] overflow-hidden md:hidden rounded-t-[2rem]"
+                            className="fixed bottom-0 left-0 right-0 bg-surface z-50 max-h-[85vh] overflow-hidden md:hidden rounded-t-4xl"
                         >
                             <div className="flex justify-center pt-4 pb-2">
                                 <div className="w-12 h-1 bg-neutral-200 rounded-full" />
@@ -627,26 +666,26 @@ export default function ShopPage() {
                             <div className="overflow-y-auto px-8 py-8 space-y-10" style={{ maxHeight: 'calc(85vh - 180px)' }}>
                                 {/* Mobile Search */}
                                 <div>
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#c6a87c] mb-4 block">Search</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary mb-4 block">Search</label>
                                     <input
                                         type="text"
                                         placeholder="Fragrance name..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full bg-white border border-neutral-200 p-4 text-sm font-serif placeholder:italic placeholder:text-neutral-300 focus:border-[#c6a87c] outline-none rounded-sm"
+                                        className="w-full bg-white border border-neutral-200 p-4 text-sm font-serif placeholder:italic placeholder:text-neutral-300 focus:border-primary outline-none rounded-sm"
                                     />
                                 </div>
 
                                 {/* Mobile Gender */}
                                 <div>
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#c6a87c] mb-4 block">For</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary mb-4 block">For</label>
                                     <div className="flex flex-wrap gap-3">
                                         {['ALL', 'WOMEN', 'MEN', 'UNISEX'].map(gender => (
                                             <button
                                                 key={gender}
                                                 onClick={() => setSelectedGender(gender)}
                                                 className={`px-4 py-2 border text-[10px] uppercase tracking-wider font-bold transition-all ${selectedGender === gender
-                                                    ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]'
+                                                    ? 'bg-foreground text-white border-foreground'
                                                     : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-900'
                                                     }`}
                                             >
@@ -658,14 +697,14 @@ export default function ShopPage() {
 
                                 {/* Mobile Price */}
                                 <div>
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#c6a87c] mb-4 flex justify-between">
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary mb-4 flex justify-between">
                                         <span>Price Range</span>
                                         <span className="text-neutral-900">${minPrice || 0} - ${maxPrice || 500}</span>
                                     </label>
                                     <div className="px-1 relative h-6 mb-6">
                                         <div className="absolute top-1/2 -translate-y-1/2 w-full h-px bg-neutral-200">
                                             <div
-                                                className="absolute h-full bg-[#c6a87c] transition-all duration-300"
+                                                className="absolute h-full bg-primary transition-all duration-300"
                                                 style={{
                                                     left: `${(Number(minPrice) / 500) * 100}%`,
                                                     right: `${100 - (Number(maxPrice || 500) / 500) * 100}%`
@@ -682,7 +721,7 @@ export default function ShopPage() {
                                                 const val = Math.min(Number(e.target.value), Number(maxPrice || 500) - 25);
                                                 setMinPrice(val.toString());
                                             }}
-                                            className="absolute w-full h-0.5 top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:bg-[#c6a87c] [&::-webkit-slider-thumb]:rounded-full"
+                                            className="absolute w-full h-0.5 top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full"
                                         />
                                         <input
                                             type="range"
@@ -694,7 +733,7 @@ export default function ShopPage() {
                                                 const val = Math.max(Number(e.target.value), Number(minPrice || 0) + 25);
                                                 setMaxPrice(val.toString());
                                             }}
-                                            className="absolute w-full h-0.5 top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:bg-[#c6a87c] [&::-webkit-slider-thumb]:rounded-full"
+                                            className="absolute w-full h-0.5 top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full"
                                         />
                                     </div>
                                 </div>
@@ -703,7 +742,7 @@ export default function ShopPage() {
                             <div className="p-8 border-t border-neutral-100 bg-white">
                                 <button
                                     onClick={() => setShowFilters(false)}
-                                    className="w-full py-4 bg-[#1a1a1a] text-white text-xs font-bold uppercase tracking-[0.2em] hover:bg-[#c6a87c] transition-colors"
+                                    className="w-full py-4 bg-foreground text-white text-xs font-bold uppercase tracking-[0.2em] hover:bg-primary transition-colors"
                                 >
                                     View Results
                                 </button>
@@ -727,7 +766,7 @@ export default function ShopPage() {
                             initial={{ scale: 0.95, opacity: 0, y: 10 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.95, opacity: 0, y: 10 }}
-                            className="bg-[#faf9f6] p-10 max-w-sm w-full shadow-2xl relative text-center border border-white"
+                            className="bg-surface p-10 max-w-sm w-full shadow-2xl relative text-center border border-white"
                             onClick={(e) => e.stopPropagation()}
                             style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cream-paper.png")' }}
                         >
@@ -738,7 +777,7 @@ export default function ShopPage() {
                                 <X size={20} strokeWidth={1} />
                             </button>
 
-                            <div className="w-12 h-12 border border-[#c6a87c]/30 rounded-full flex items-center justify-center mx-auto mb-6 text-[#c6a87c]">
+                            <div className="w-12 h-12 border border-primary/30 rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
                                 <User size={20} strokeWidth={1} />
                             </div>
 
@@ -749,13 +788,13 @@ export default function ShopPage() {
 
                             <Link
                                 href="/login"
-                                className="block w-full bg-[#1a1a1a] text-white py-3 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-[#c6a87c] transition-colors mb-4"
+                                className="block w-full bg-foreground text-white py-3 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-primary transition-colors mb-4"
                             >
                                 Sign In
                             </Link>
 
                             <p className="text-[10px] text-neutral-400 tracking-wider">
-                                New here? <Link href="/signup" className="text-neutral-900 underline hover:text-[#c6a87c] transition-colors">Create Account</Link>
+                                New here? <Link href="/signup" className="text-neutral-900 underline hover:text-primary transition-colors">Create Account</Link>
                             </p>
                         </motion.div>
                     </motion.div>
@@ -769,9 +808,9 @@ export default function ShopPage() {
                         initial={{ opacity: 0, y: 50 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
-                        className="fixed bottom-8 right-8 z-[9999] bg-[#1a1a1a] text-white px-8 py-4 flex items-center gap-4 shadow-2xl"
+                        className="fixed bottom-8 right-8 z-9999 bg-foreground text-white px-8 py-4 flex items-center gap-4 shadow-2xl"
                     >
-                        <div className="w-8 h-8 rounded-full bg-[#c6a87c] flex items-center justify-center text-black">
+                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black">
                             <ShoppingBag size={14} fill="currentColor" />
                         </div>
                         <div>

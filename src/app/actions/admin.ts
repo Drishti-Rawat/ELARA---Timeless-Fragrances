@@ -7,14 +7,21 @@ import { sendEmail } from "@/lib/email";
 
 // --- Categories ---
 
+export interface AdminActionResponse<T = unknown> {
+    success: boolean;
+    error?: string;
+    data?: T;
+    [key: string]: unknown; // Keep for backward compatibility initially, then clean up
+}
+
+// --- Categories ---
+
 export async function createCategoryAction(formData: FormData) {
     try {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
 
         const name = formData.get('name') as string;
-        // Image handling would typically involve uploading to a storage service (S3/Supabase Storage)
-        // For now we will accept a URL string or leave it blank
         const image = formData.get('image') as string || null;
 
         if (!name) return { success: false, error: "Name is required" };
@@ -37,7 +44,7 @@ export async function getCategoriesAction() {
             orderBy: { name: 'asc' }
         });
         return { success: true, categories };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to fetch categories" };
     }
 }
@@ -55,7 +62,6 @@ export async function createProductAction(formData: FormData) {
         const categoryId = formData.get('categoryId') as string;
         const stock = parseInt(formData.get('stock') as string) || 0;
         const sku = formData.get('sku') as string || undefined;
-        // Simple image URL handling for now
         const imageUrl = formData.get('imageUrl') as string;
         const gender = (formData.get('gender') as "MEN" | "WOMEN" | "UNISEX") || "UNISEX";
 
@@ -101,9 +107,14 @@ export async function getProductsAction(page: number = 1, limit: number = 10) {
             prisma.product.count()
         ]);
 
+        const formattedProducts = products.map(product => ({
+            ...product,
+            price: Number(product.price)
+        }));
+
         return {
             success: true,
-            products,
+            products: formattedProducts,
             pagination: {
                 total,
                 pages: Math.ceil(total / limit),
@@ -111,7 +122,7 @@ export async function getProductsAction(page: number = 1, limit: number = 10) {
                 limit
             }
         };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to fetch products" };
     }
 }
@@ -130,25 +141,22 @@ export async function updateProductAction(formData: FormData) {
         const salePercentage = parseFloat(formData.get('salePercentage') as string) || 0;
         const saleEndDateRaw = formData.get('saleEndDate') as string;
 
-        // Optional fields handling if partially updating (or assume form sends current values)
-        // For simple restocking, we expect at least stock and id. But let's handle full update for safety.
-
-        let data: any = { stock };
-        if (name) data.name = name;
-        if (description) data.description = description;
-        if (!isNaN(price)) data.price = price;
-        data.isOnSale = isOnSale;
-        data.salePercentage = salePercentage;
-        data.saleEndDate = saleEndDateRaw ? new Date(saleEndDateRaw) : null;
+        const updateData: Record<string, unknown> = { stock };
+        if (name) updateData.name = name;
+        if (description) updateData.description = description;
+        if (!isNaN(price)) updateData.price = price;
+        updateData.isOnSale = isOnSale;
+        updateData.salePercentage = salePercentage;
+        updateData.saleEndDate = saleEndDateRaw ? new Date(saleEndDateRaw) : null;
 
         await prisma.product.update({
             where: { id },
-            data
+            data: updateData as unknown as Parameters<typeof prisma.product.update>[0]['data']
         });
 
         revalidatePath('/admin');
         return { success: true };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to update product" };
     }
 }
@@ -183,7 +191,13 @@ export async function getOrdersAction(page: number = 1, limit: number = 10, filt
 
         const skip = (page - 1) * limit;
 
-        let whereClause: any = {};
+        const whereClause: {
+            status?: {
+                notIn?: string[];
+                in?: string[];
+            }
+        } = {};
+
         if (filter === 'active') {
             whereClause.status = { notIn: ['DELIVERED', 'CANCELLED'] };
         } else if (filter === 'history') {
@@ -205,9 +219,24 @@ export async function getOrdersAction(page: number = 1, limit: number = 10, filt
             prisma.order.count({ where: whereClause })
         ]);
 
+        const formattedOrders = orders.map(order => ({
+            ...order,
+            total: Number(order.total),
+            subtotal: order.subtotal ? Number(order.subtotal) : undefined,
+            discount: Number(order.discount),
+            items: order.items.map(item => ({
+                ...item,
+                price: Number(item.price),
+                product: {
+                    ...item.product,
+                    price: Number(item.product.price)
+                }
+            }))
+        }));
+
         return {
             success: true,
-            orders,
+            orders: formattedOrders,
             pagination: {
                 total,
                 pages: Math.ceil(total / limit),
@@ -236,7 +265,7 @@ export async function promoteToAgentAction(email: string) {
 
         revalidatePath('/admin/agents');
         return { success: true };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to promote user" };
     }
 }
@@ -253,7 +282,7 @@ export async function getDeliveryAgentsAction() {
             select: { id: true, name: true, email: true, phone: true, isAvailable: true }
         });
         return { success: true, agents };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to fetch agents" };
     }
 }
@@ -270,7 +299,7 @@ export async function assignAgentToOrderAction(orderId: string, agentId: string)
 
         revalidatePath('/admin/orders');
         return { success: true };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to assign agent" };
     }
 }
@@ -280,34 +309,32 @@ export async function updateOrderStatusAction(orderId: string, status: string, t
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') return { success: false, error: "Unauthorized" };
 
-        const updateData: any = { status };
+        const updateData: {
+            status: string;
+            trackingNumber?: string;
+            deliveryOtp?: string;
+        } = { status };
 
-        // Auto-generate tracking number if shipping and not provided
         if (status === 'SHIPPED') {
             if (!trackingNumber) {
-                // numeric timestamp + random suffix
                 const timestamp = Date.now().toString().slice(-6);
                 updateData.trackingNumber = `TRK-${orderId.slice(0, 4).toUpperCase()}-${timestamp}`;
             }
 
-            // Generate OTP immediately when Shipped (or Handed Over)
             const otp = Math.floor(1000 + Math.random() * 9000).toString();
             updateData.deliveryOtp = otp;
 
-            // Mock Notification
             console.log(`[NOTIFICATION] Order ${orderId} SHIPPED. OTP sent to customer: ${otp}`);
         } else if (trackingNumber) {
             updateData.trackingNumber = trackingNumber;
         }
 
-        // Logic Flaw Fix: Restore stock if Admin cancels the order
         if (status === 'CANCELLED') {
             const existingOrder = await prisma.order.findUnique({
                 where: { id: orderId },
                 include: { items: true }
             });
 
-            // Only restore if not already cancelled
             if (existingOrder && existingOrder.status !== 'CANCELLED') {
                 for (const item of existingOrder.items) {
                     await prisma.product.update({
@@ -321,10 +348,9 @@ export async function updateOrderStatusAction(orderId: string, status: string, t
         const order = await prisma.order.update({
             where: { id: orderId },
             data: updateData,
-            include: { user: true }
+            include: { user: { select: { email: true } } }
         });
 
-        // Send Email if Shipped
         if (status === 'SHIPPED' && updateData.deliveryOtp) {
             await sendEmail({
                 to: order.user.email,

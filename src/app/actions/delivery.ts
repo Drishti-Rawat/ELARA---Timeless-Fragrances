@@ -3,7 +3,6 @@
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { sendEmail } from '@/lib/email';
 
 export async function getAssignedOrders() {

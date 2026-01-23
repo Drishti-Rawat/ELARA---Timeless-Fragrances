@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, Menu, User, Search, LogOut, LayoutDashboard, Heart, HelpCircle, X } from 'lucide-react';
+import { ShoppingBag, Menu, User, LogOut, LayoutDashboard, Heart, HelpCircle, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getUserSessionAction, logoutAction } from '@/app/actions/auth-custom';
 import { getCartAction } from '@/app/actions/shop';

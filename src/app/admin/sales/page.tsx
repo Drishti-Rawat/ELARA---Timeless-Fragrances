@@ -12,8 +12,20 @@ import {
 import { Percent, Tag, TrendingDown, Sparkles, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+interface Category {
+    id: string;
+    name: string;
+}
+
+interface ProductFilter {
+    categoryId?: string;
+    gender?: 'MEN' | 'WOMEN' | 'UNISEX';
+    minPrice?: number;
+    maxPrice?: number;
+}
+
 export default function AdminSalesPage() {
-    const [categories, setCategories] = useState<any[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(false);
     const [previewCount, setPreviewCount] = useState(0);
 
@@ -25,21 +37,21 @@ export default function AdminSalesPage() {
     const [salePercentage, setSalePercentage] = useState('');
     const [saleEndDate, setSaleEndDate] = useState('');
 
+    const loadCategories = async () => {
+        const res = await getCategoriesAction();
+        if (res.success) {
+            setCategories(res.categories as Category[] || []);
+        }
+    };
+
     useEffect(() => {
         loadCategories();
     }, []);
 
-    const loadCategories = async () => {
-        const res = await getCategoriesAction();
-        if (res.success) {
-            setCategories(res.categories || []);
-        }
-    };
-
     const handlePreview = async () => {
-        const filter: any = {};
+        const filter: ProductFilter = {};
         if (categoryFilter) filter.categoryId = categoryFilter;
-        if (genderFilter) filter.gender = genderFilter;
+        if (genderFilter) filter.gender = genderFilter as 'MEN' | 'WOMEN' | 'UNISEX';
         if (minPrice) filter.minPrice = parseFloat(minPrice);
         if (maxPrice) filter.maxPrice = parseFloat(maxPrice);
 
@@ -50,8 +62,8 @@ export default function AdminSalesPage() {
     };
 
     const handleApplySale = async () => {
-        if (!salePercentage || parseFloat(salePercentage) <= 0) {
-            alert('Please enter a valid sale percentage');
+        if (!salePercentage || parseFloat(salePercentage) < 0) {
+            alert('Please enter a valid sale percentage (0-100)');
             return;
         }
 
@@ -59,37 +71,42 @@ export default function AdminSalesPage() {
         const endDate = saleEndDate ? new Date(saleEndDate) : undefined;
         setLoading(true);
 
-        let res;
+        try {
+            let res: { success: boolean, count?: number, error?: string };
 
-        // Priority: Category > Gender > Price Range
-        if (categoryFilter) {
-            res = await bulkApplySaleByCategoryAction(categoryFilter, percentage, endDate);
-        } else if (genderFilter) {
-            res = await bulkApplySaleByGenderAction(genderFilter, percentage, endDate);
-        } else if (minPrice || maxPrice) {
-            const min = minPrice ? parseFloat(minPrice) : 0;
-            const max = maxPrice ? parseFloat(maxPrice) : 999999;
-            res = await bulkApplySaleByPriceAction(min, max, percentage, endDate);
-        } else {
-            alert('Please select at least one filter (Category, Gender, or Price Range)');
+            // Priority: Category > Gender > Price Range
+            if (categoryFilter) {
+                res = await bulkApplySaleByCategoryAction(categoryFilter, percentage, endDate);
+            } else if (genderFilter) {
+                res = await bulkApplySaleByGenderAction(genderFilter as 'MEN' | 'WOMEN' | 'UNISEX', percentage, endDate);
+            } else if (minPrice || maxPrice) {
+                const min = minPrice ? parseFloat(minPrice) : 0;
+                const max = maxPrice ? parseFloat(maxPrice) : 999999;
+                res = await bulkApplySaleByPriceAction(min, max, percentage, endDate);
+            } else {
+                alert('Please select at least one filter (Category, Gender, or Price Range)');
+                setLoading(false);
+                return;
+            }
+
+            if (res.success) {
+                alert(`✅ Sale applied successfully to ${res.count} products!`);
+                // Reset form
+                setCategoryFilter('');
+                setGenderFilter('');
+                setMinPrice('');
+                setMaxPrice('');
+                setSalePercentage('');
+                setSaleEndDate('');
+                setPreviewCount(0);
+            } else {
+                alert('❌ ' + (res.error || 'Failed to apply sale'));
+            }
+        } catch (error) {
+            console.error("Apply Sale Error:", error);
+            alert('❌ An unexpected error occurred');
+        } finally {
             setLoading(false);
-            return;
-        }
-
-        setLoading(false);
-
-        if (res.success) {
-            alert(`✅ Sale applied successfully to ${res.count} products!`);
-            // Reset form
-            setCategoryFilter('');
-            setGenderFilter('');
-            setMinPrice('');
-            setMaxPrice('');
-            setSalePercentage('');
-            setSaleEndDate('');
-            setPreviewCount(0);
-        } else {
-            alert('❌ ' + (res.error || 'Failed to apply sale'));
         }
     };
 
@@ -204,7 +221,7 @@ export default function AdminSalesPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Gender</label>
                         <select
                             value={genderFilter}
-                            onChange={(e) => setGenderFilter(e.target.value as any)}
+                            onChange={(e) => setGenderFilter(e.target.value as 'MEN' | 'WOMEN' | 'UNISEX')}
                             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                         >
                             <option value="">All Genders</option>

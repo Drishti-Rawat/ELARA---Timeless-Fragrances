@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Package, MapPin, Phone, CheckCircle, Navigation, LogOut, Truck, AlertTriangle, ChevronRight, Calendar, User } from 'lucide-react';
+import { Package, MapPin, Phone, CheckCircle, Navigation, LogOut, Truck, User } from 'lucide-react';
 import { markAsOutForDelivery, completeDelivery, updateAgentProfileAction } from '@/app/actions/delivery';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,7 +10,15 @@ type Order = {
     id: string;
     status: string;
     total: string;
-    deliveryAddress: any;
+    deliveryAddress: {
+        tag: string;
+        street: string;
+        city: string;
+        state: string;
+        zip: string;
+        country: string;
+        phone: string;
+    } | null;
     user: {
         name: string | null;
         phone: string | null;
@@ -66,7 +74,7 @@ export default function DeliveryDashboard({ initialOrders, agentProfile }: { ini
                 setShowProfileModal(false);
                 router.refresh();
             }
-        } catch (err) {
+        } catch {
             alert("Failed to update profile");
         } finally {
             setLoading(false);
@@ -80,7 +88,7 @@ export default function DeliveryDashboard({ initialOrders, agentProfile }: { ini
             if (res.success) {
                 setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'OUT_FOR_DELIVERY' } : o));
             }
-        } catch (err) {
+        } catch {
             alert('Failed to update status');
         } finally {
             setLoading(false);
@@ -102,7 +110,7 @@ export default function DeliveryDashboard({ initialOrders, agentProfile }: { ini
             } else {
                 setError(res.message || 'Invalid OTP');
             }
-        } catch (err) {
+        } catch {
             setError('Something went wrong');
         } finally {
             setLoading(false);

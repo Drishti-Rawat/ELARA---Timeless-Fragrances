@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
-import { ChevronDown, Mail, Phone, Instagram, Globe, Code, Palette, Zap, Shield, Users, Award } from 'lucide-react';
+import { ChevronDown, Mail, Instagram, Globe, Code, Palette, Zap, Shield, Users, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const faqs = [
@@ -267,7 +267,7 @@ export default function HelpSupportPage() {
                             <div>
                                 <h3 className="text-3xl font-serif text-white mb-6">Ready to Start Your Project?</h3>
                                 <p className="text-neutral-400 mb-8 font-light leading-relaxed">
-                                    Let's discuss how we can bring your vision to life. Our team is ready to help you build
+                                    Let&apos;s discuss how we can bring your vision to life. Our team is ready to help you build
                                     a powerful digital presence.
                                 </p>
 
@@ -319,7 +319,7 @@ export default function HelpSupportPage() {
                                         <Award className="text-primary shrink-0 mt-0.5" size={20} />
                                         <div>
                                             <p className="font-bold text-white text-sm mb-1">Commitment to Quality</p>
-                                            <p className="text-xs text-neutral-400 font-light">We don't just build sites; we craft digital legacies.</p>
+                                            <p className="text-xs text-neutral-400 font-light">We don&apos;t just build sites; we craft digital legacies.</p>
                                         </div>
                                     </div>
                                 </div>

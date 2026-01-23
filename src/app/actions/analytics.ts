@@ -7,7 +7,7 @@ export type AnalyticsPeriod = 'week' | 'month' | 'year';
 export async function getAnalyticsDataAction(period: AnalyticsPeriod) {
     try {
         const now = new Date();
-        let startDate = new Date();
+        const startDate = new Date();
 
         // Include today? Yes.
         // Set generic start dates
@@ -105,11 +105,9 @@ export async function getAnalyticsDataAction(period: AnalyticsPeriod) {
 
                 // 1. Time Series Data
                 let key = '';
-                let sortKey = date.getTime();
+                const sortKey = date.getTime();
 
-                if (period === 'week') {
-                    key = date.toISOString().split('T')[0];
-                } else if (period === 'month') {
+                if (period === 'week' || period === 'month') {
                     key = date.toISOString().split('T')[0];
                 } else if (period === 'year') {
                     key = date.toISOString().substring(0, 7);
@@ -123,7 +121,7 @@ export async function getAnalyticsDataAction(period: AnalyticsPeriod) {
                 entry.count += 1;
 
                 // 2. Category, Product & Gender Data
-                order.items.forEach((item: any) => {
+                order.items.forEach((item: { price: unknown; quantity: number; product: { category: { name: string } | null; name: string; gender: string | null }; productId: string }) => {
                     const price = Number(item.price) * item.quantity;
 
                     // Category
@@ -156,7 +154,7 @@ export async function getAnalyticsDataAction(period: AnalyticsPeriod) {
         // Fill in missing gaps
         const fillGaps = () => {
             const result = [];
-            let current = new Date(startDate);
+            const current = new Date(startDate);
             const end = new Date();
 
             while (current <= end) {

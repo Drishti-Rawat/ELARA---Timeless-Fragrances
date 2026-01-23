@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { getCartAction, updateCartItemAction, placeOrderAction } from '../actions/shop';
 import { getUserAddressesAction, addAddressAction, deleteAddressAction } from '../actions/address';
 import { validateCouponAction } from '../actions/coupons';
@@ -11,18 +10,56 @@ import Navbar from '@/components/Navbar';
 import { Loader2, Trash2, ArrowRight, ShoppingBag, CheckCircle2, MapPin, Plus, Home, Briefcase, User, Tag, Minus } from 'lucide-react';
 import Loading from '@/components/Loading';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+
+interface Address {
+    id: string;
+    tag: string;
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+    phone: string;
+    isDefault: boolean;
+}
+
+interface CartItem {
+    id: string;
+    quantity: number;
+    product: {
+        id: string;
+        name: string;
+        price: number;
+        isOnSale: boolean;
+        salePercentage: number | null;
+        images: string[];
+        category: {
+            name: string;
+        } | null;
+    };
+}
+
+interface Cart {
+    items: CartItem[];
+}
+
+interface UserProfile {
+    id: string;
+    email: string;
+    name: string | null;
+}
 
 export default function CartPage() {
-    const router = useRouter();
-    const [cart, setCart] = useState<any>(null);
+    const [cart, setCart] = useState<Cart | null>(null);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<UserProfile | null>(null);
     const [processing, setProcessing] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [scrolledToAddress, setScrolledToAddress] = useState(false);
 
     // Address State
-    const [addresses, setAddresses] = useState<any[]>([]);
+    const [addresses, setAddresses] = useState<Address[]>([]);
     const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
     const [showAddressForm, setShowAddressForm] = useState(false);
     const [newAddress, setNewAddress] = useState({
@@ -39,42 +76,49 @@ export default function CartPage() {
 
     // Coupon State
     const [couponCode, setCouponCode] = useState('');
-    const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+    const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
     const [couponError, setCouponError] = useState('');
     const [validatingCoupon, setValidatingCoupon] = useState(false);
 
-    const loadData = async () => {
-        setLoading(true);
+    const loadData = useCallback(async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         const session = await getUserSessionAction();
-        setUser(session);
         if (session) {
+            setUser({
+                id: session.userId,
+                email: session.email,
+                name: session.name
+            });
             const [cartRes, addrRes] = await Promise.all([
                 getCartAction(),
                 getUserAddressesAction()
             ]);
 
-            if (cartRes.success) setCart(cartRes.cart);
+            if (cartRes.success && cartRes.cart) setCart(cartRes.cart as Cart);
             if (addrRes.success) {
-                setAddresses(addrRes.addresses || []);
+                const fetchedAddresses = addrRes.addresses as Address[] || [];
+                setAddresses(fetchedAddresses);
                 // Select default or first address if available
-                const defaultAddr = addrRes.addresses?.find((a: any) => a.isDefault);
+                const defaultAddr = fetchedAddresses.find(a => a.isDefault);
                 if (defaultAddr) setSelectedAddressId(defaultAddr.id);
-                else if (addrRes.addresses && addrRes.addresses.length > 0) setSelectedAddressId(addrRes.addresses[0].id);
+                else if (fetchedAddresses.length > 0) setSelectedAddressId(fetchedAddresses[0].id);
             }
         }
         setLoading(false);
-    };
+    }, []);
 
     useEffect(() => {
-        loadData();
-    }, []);
+        (async () => {
+            await loadData(true);
+        })();
+    }, [loadData]);
 
     const handleUpdateQuantity = async (itemId: string, newQty: number) => {
         await updateCartItemAction(itemId, newQty);
         window.dispatchEvent(new CustomEvent('cart-updated'));
         // Refresh cart only
         const res = await getCartAction();
-        if (res.success) setCart(res.cart);
+        if (res.success && res.cart) setCart(res.cart as Cart);
     };
 
     const handleAddAddress = async (e: React.FormEvent) => {
@@ -82,13 +126,15 @@ export default function CartPage() {
         if (!user) return;
         setAddingAddress(true);
 
-        const res: any = await addAddressAction(newAddress);
+        const res = await addAddressAction(newAddress);
         if (res.success) {
             // Refresh addresses
             const addrRes = await getUserAddressesAction();
             if (addrRes.success) {
-                setAddresses(addrRes.addresses || []);
-                if (res.address) setSelectedAddressId(res.address.id); // Select the new one
+                const updatedAddresses = addrRes.addresses as Address[] || [];
+                setAddresses(updatedAddresses);
+                const addedAddress = (res as { success: boolean, address?: Address }).address;
+                if (addedAddress) setSelectedAddressId(addedAddress.id); // Select the new one
             }
             setShowAddressForm(false);
             // Reset form
@@ -106,7 +152,7 @@ export default function CartPage() {
 
         const addrRes = await getUserAddressesAction();
         if (addrRes.success) {
-            const updated = addrRes.addresses || [];
+            const updated = addrRes.addresses as Address[] || [];
             setAddresses(updated);
             if (selectedAddressId === id) {
                 setSelectedAddressId(updated.length > 0 ? updated[0].id : null);
@@ -126,24 +172,33 @@ export default function CartPage() {
 
         setProcessing(true);
 
-        const subtotal = cart.items.reduce((sum: number, item: any) => {
+        const itemSubtotal = cart.items.reduce((sum: number, item) => {
             let price = Number(item.product.price);
-            if (item.product.isOnSale) {
+            if (item.product.isOnSale && item.product.salePercentage) {
                 price = price * (1 - item.product.salePercentage / 100);
             }
             return sum + (price * item.quantity);
         }, 0);
-        const discount = appliedCoupon ? appliedCoupon.discount : 0;
-        const total = subtotal - discount;
+        const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
+        const finalTotal = itemSubtotal - discountAmount;
 
         // Pass snapshot of address and coupon info
         const res = await placeOrderAction(
-            total,
-            cart.items,
+            finalTotal,
+            cart.items.map(item => ({
+                productId: item.product.id,
+                quantity: item.quantity,
+                product: {
+                    price: item.product.price,
+                    isOnSale: item.product.isOnSale,
+                    salePercentage: item.product.salePercentage,
+                    name: item.product.name
+                }
+            })),
             selectedAddr,
             appliedCoupon?.code,
-            subtotal,
-            discount
+            itemSubtotal,
+            discountAmount
         );
 
         if (res.success) {
@@ -158,6 +213,7 @@ export default function CartPage() {
     };
 
     const handleApplyCoupon = async () => {
+        if (!cart) return;
         if (!couponCode.trim()) {
             setCouponError('Please enter a coupon code');
             return;
@@ -166,14 +222,14 @@ export default function CartPage() {
         setValidatingCoupon(true);
         setCouponError('');
 
-        const subtotal = cart.items.reduce((sum: number, item: any) => {
+        const itemSubtotal = cart.items.reduce((sum: number, item) => {
             let price = Number(item.product.price);
-            if (item.product.isOnSale) {
+            if (item.product.isOnSale && item.product.salePercentage) {
                 price = price * (1 - item.product.salePercentage / 100);
             }
             return sum + (price * item.quantity);
         }, 0);
-        const res = await validateCouponAction(couponCode, subtotal, cart.items);
+        const res = await validateCouponAction(couponCode, itemSubtotal, cart.items);
 
         if (res.success && res.coupon) {
             setAppliedCoupon(res.coupon);
@@ -196,12 +252,12 @@ export default function CartPage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-[#faf9f6]">
+            <div className="min-h-screen bg-surface">
                 <Navbar />
                 <div className="pt-32 pb-20 px-4 text-center">
-                    <h2 className="text-3xl font-serif mb-4 text-[#1a1a1a]">Your Selection</h2>
+                    <h2 className="text-3xl font-serif mb-4 text-foreground">Your Selection</h2>
                     <p className="text-neutral-500 mb-8 font-light">Please sign in to view your bag.</p>
-                    <Link href="/login" className="inline-block bg-[#1a1a1a] text-white px-10 py-4 text-xs uppercase tracking-[0.2em] font-bold hover:bg-[#c6a87c] transition-colors">
+                    <Link href="/login" className="inline-block bg-foreground text-white px-10 py-4 text-xs uppercase tracking-[0.2em] font-bold hover:bg-primary transition-colors">
                         Enter
                     </Link>
                 </div>
@@ -211,21 +267,21 @@ export default function CartPage() {
 
     if (orderPlaced) {
         return (
-            <div className="min-h-screen bg-[#faf9f6]">
+            <div className="min-h-screen bg-surface">
                 <Navbar />
                 <div className="pt-32 pb-20 px-4 flex flex-col items-center text-center">
                     <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="w-20 h-20 bg-white border border-[#c6a87c]/30 rounded-full flex items-center justify-center text-[#c6a87c] mb-8 shadow-xl"
+                        className="w-20 h-20 bg-white border border-primary/30 rounded-full flex items-center justify-center text-primary mb-8 shadow-xl"
                     >
                         <CheckCircle2 size={32} />
                     </motion.div>
-                    <h1 className="text-4xl md:text-5xl font-serif text-[#1a1a1a] mb-6">Order Placed</h1>
+                    <h1 className="text-4xl md:text-5xl font-serif text-foreground mb-6">Order Placed</h1>
                     <p className="text-neutral-500 max-w-md mx-auto mb-10 leading-relaxed font-light">
                         Thank you for your purchase. We have received your order and are preparing it with care.
                     </p>
-                    <Link href="/shop" className="inline-block bg-[#1a1a1a] text-white px-10 py-4 text-xs uppercase tracking-[0.2em] font-bold hover:bg-[#c6a87c] transition-colors">
+                    <Link href="/shop" className="inline-block bg-foreground text-white px-10 py-4 text-xs uppercase tracking-[0.2em] font-bold hover:bg-primary transition-colors">
                         Continue Shopping
                     </Link>
                 </div>
@@ -235,17 +291,17 @@ export default function CartPage() {
 
     if (!cart || !cart.items || cart.items.length === 0) {
         return (
-            <div className="min-h-screen bg-[#faf9f6] flex flex-col">
+            <div className="min-h-screen bg-surface flex flex-col">
                 <Navbar />
-                <div className="flex-grow flex flex-col items-center justify-center px-4 text-center pt-24 pb-12">
+                <div className="grow flex flex-col items-center justify-center px-4 text-center pt-24 pb-12">
                     <div className="w-20 h-20 bg-white border border-dashed border-neutral-300 rounded-full flex items-center justify-center mb-6 shadow-sm">
                         <ShoppingBag size={32} className="text-neutral-300" />
                     </div>
-                    <h2 className="text-3xl font-serif mb-3 text-[#1a1a1a]">Your bag is empty</h2>
+                    <h2 className="text-3xl font-serif mb-3 text-foreground">Your bag is empty</h2>
                     <p className="text-neutral-500 mb-8 max-w-sm font-light leading-relaxed">
                         Explore our fragrances and add your favorites to your collection.
                     </p>
-                    <Link href="/shop" className="inline-block bg-[#1a1a1a] text-white px-10 py-4 text-xs uppercase tracking-[0.2em] font-bold hover:bg-[#c6a87c] transition-colors">
+                    <Link href="/shop" className="inline-block bg-foreground text-white px-10 py-4 text-xs uppercase tracking-[0.2em] font-bold hover:bg-primary transition-colors">
                         Discover Scents
                     </Link>
                 </div>
@@ -253,15 +309,15 @@ export default function CartPage() {
         );
     }
 
-    const subtotal = cart.items.reduce((sum: number, item: any) => {
+    const currentSubtotal = cart.items.reduce((sum: number, item) => {
         let price = Number(item.product.price);
-        if (item.product.isOnSale) {
+        if (item.product.isOnSale && item.product.salePercentage) {
             price = price * (1 - item.product.salePercentage / 100);
         }
         return sum + (price * item.quantity);
     }, 0);
-    const shipping: number = 0; // Free shipping
-    const total = subtotal + shipping;
+    const shippingCost: number = 0; // Free shipping
+    const currentTotal = currentSubtotal + shippingCost;
 
     const selectedAddress = addresses.find(a => a.id === selectedAddressId);
 
@@ -276,20 +332,20 @@ export default function CartPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#faf9f6]">
+        <div className="min-h-screen bg-surface">
             <Navbar />
 
             <div className="pt-32 pb-12 bg-white border-b border-neutral-100">
                 <div className="container mx-auto px-6 max-w-7xl">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                         <div>
-                            <p className="text-[#c6a87c] text-xs font-bold uppercase tracking-[0.2em] mb-3">Shopping Bag</p>
-                            <h1 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] leading-tight">
+                            <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-3">Shopping Bag</p>
+                            <h1 className="font-serif text-4xl md:text-5xl text-foreground leading-tight">
                                 Your Selection
                             </h1>
                         </div>
                         <div className="flex items-center gap-2 text-neutral-400 text-sm">
-                            <span className="font-serif italic text-[#1a1a1a]">{cart.items.length}</span>
+                            <span className="font-serif italic text-foreground">{cart.items.length}</span>
                             <span>Items</span>
                         </div>
                     </div>
@@ -303,9 +359,9 @@ export default function CartPage() {
                     <div className="lg:col-span-2 space-y-16">
 
                         {/* Address Section - NOW FIRST */}
-                        <section id="address-section" className={`transition-all duration-500 ${scrolledToAddress ? 'ring-2 ring-[#c6a87c] p-2 rounded-sm' : ''}`}>
-                            <h2 className="font-serif text-2xl text-[#1a1a1a] mb-6 flex items-center gap-3">
-                                <span className="w-8 h-8 rounded-full bg-[#1a1a1a] text-white flex items-center justify-center text-xs font-bold">1</span>
+                        <section id="address-section" className={`transition-all duration-500 ${scrolledToAddress ? 'ring-2 ring-primary p-2 rounded-sm' : ''}`}>
+                            <h2 className="font-serif text-2xl text-foreground mb-6 flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-full bg-foreground text-white flex items-center justify-center text-xs font-bold">1</span>
                                 Delivery Address
                             </h2>
 
@@ -316,20 +372,20 @@ export default function CartPage() {
                                         <div
                                             key={addr.id}
                                             onClick={() => setSelectedAddressId(addr.id)}
-                                            className={`p-3 border rounded-sm cursor-pointer transition-all relative group bg-white hover:shadow-sm ${selectedAddressId === addr.id ? 'border-[#c6a87c] ring-1 ring-[#c6a87c] bg-[#faf9f6]' : 'border-neutral-200 hover:border-[#c6a87c]/50'}`}
+                                            className={`p-3 border rounded-sm cursor-pointer transition-all relative group bg-white hover:shadow-sm ${selectedAddressId === addr.id ? 'border-primary ring-1 ring-primary bg-surface' : 'border-neutral-200 hover:border-primary/50'}`}
                                         >
                                             <div className="flex justify-between items-center mb-2">
                                                 <div className="flex items-center gap-1.5">
-                                                    {addr.tag === 'Home' && <Home size={12} className={selectedAddressId === addr.id ? "text-[#c6a87c]" : "text-neutral-400"} />}
-                                                    {addr.tag === 'Work' && <Briefcase size={12} className={selectedAddressId === addr.id ? "text-[#c6a87c]" : "text-neutral-400"} />}
-                                                    {addr.tag === 'Other' && <User size={12} className={selectedAddressId === addr.id ? "text-[#c6a87c]" : "text-neutral-400"} />}
-                                                    <span className={`font-bold text-[10px] uppercase tracking-wide ${selectedAddressId === addr.id ? "text-[#c6a87c]" : "text-neutral-500"}`}>{addr.tag}</span>
+                                                    {addr.tag === 'Home' && <Home size={12} className={selectedAddressId === addr.id ? "text-primary" : "text-neutral-400"} />}
+                                                    {addr.tag === 'Work' && <Briefcase size={12} className={selectedAddressId === addr.id ? "text-primary" : "text-neutral-400"} />}
+                                                    {addr.tag === 'Other' && <User size={12} className={selectedAddressId === addr.id ? "text-primary" : "text-neutral-400"} />}
+                                                    <span className={`font-bold text-[10px] uppercase tracking-wide ${selectedAddressId === addr.id ? "text-primary" : "text-neutral-500"}`}>{addr.tag}</span>
                                                 </div>
                                                 <button onClick={(e) => handleDeleteAddress(addr.id, e)} className="text-neutral-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1">
                                                     <Trash2 size={12} />
                                                 </button>
                                             </div>
-                                            <p className="text-xs text-[#1a1a1a] font-medium leading-snug mb-0.5 line-clamp-1">{addr.street}</p>
+                                            <p className="text-xs text-foreground font-medium leading-snug mb-0.5 line-clamp-1">{addr.street}</p>
                                             <p className="text-[10px] text-neutral-500 leading-snug font-light mb-2">{addr.city}, {addr.zip}</p>
                                             <p className="text-[10px] text-neutral-400 font-medium flex items-center gap-1"><User size={8} /> {addr.phone}</p>
                                         </div>
@@ -337,10 +393,10 @@ export default function CartPage() {
 
                                     <button
                                         onClick={() => setShowAddressForm(true)}
-                                        className="min-h-[100px] border border-dashed border-neutral-300 rounded-sm flex flex-col items-center justify-center text-neutral-400 hover:text-[#c6a87c] hover:border-[#c6a87c] hover:bg-white transition-all group gap-2 p-4"
+                                        className="min-h-[100px] border border-dashed border-neutral-300 rounded-sm flex flex-col items-center justify-center text-neutral-400 hover:text-primary hover:border-primary hover:bg-white transition-all group gap-2 p-4"
                                     >
-                                        <div className="w-8 h-8 rounded-full bg-neutral-50 group-hover:bg-[#c6a87c]/10 flex items-center justify-center transition-colors">
-                                            <Plus size={16} className="group-hover:text-[#c6a87c]" />
+                                        <div className="w-8 h-8 rounded-full bg-neutral-50 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                                            <Plus size={16} className="group-hover:text-primary" />
                                         </div>
                                         <span className="text-[10px] font-bold uppercase tracking-widest text-center">Add New</span>
                                     </button>
@@ -354,7 +410,7 @@ export default function CartPage() {
                                     animate={{ opacity: 1, height: 'auto' }}
                                     className="bg-white p-5 rounded-sm border border-neutral-200 shadow-sm"
                                 >
-                                    <h3 className="font-serif text-base mb-4 text-[#1a1a1a]">New Address</h3>
+                                    <h3 className="font-serif text-base mb-4 text-foreground">New Address</h3>
                                     <form onSubmit={handleAddAddress} className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
@@ -363,7 +419,7 @@ export default function CartPage() {
                                                     <select
                                                         value={newAddress.tag}
                                                         onChange={e => setNewAddress({ ...newAddress, tag: e.target.value })}
-                                                        className="w-full p-2.5 border border-neutral-200 rounded-sm text-xs focus:border-[#c6a87c] outline-none appearance-none bg-white font-medium"
+                                                        className="w-full p-2.5 border border-neutral-200 rounded-sm text-xs focus:border-primary outline-none appearance-none bg-white font-medium"
                                                     >
                                                         <option value="Home">Home</option>
                                                         <option value="Work">Work</option>
@@ -376,28 +432,28 @@ export default function CartPage() {
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1.5">Phone</label>
-                                                <input required type="tel" placeholder="Mobile" className="w-full p-2.5 border border-neutral-200 rounded-sm text-xs focus:border-[#c6a87c] outline-none"
+                                                <input required type="tel" placeholder="Mobile" className="w-full p-2.5 border border-neutral-200 rounded-sm text-xs focus:border-primary outline-none"
                                                     value={newAddress.phone} onChange={e => setNewAddress({ ...newAddress, phone: e.target.value })} />
                                             </div>
                                         </div>
                                         <div>
                                             <label className="block text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1.5">Street Address</label>
-                                            <input required type="text" placeholder="Address Details" className="w-full p-2.5 border border-neutral-200 rounded-sm text-xs focus:border-[#c6a87c] outline-none"
+                                            <input required type="text" placeholder="Address Details" className="w-full p-2.5 border border-neutral-200 rounded-sm text-xs focus:border-primary outline-none"
                                                 value={newAddress.street} onChange={e => setNewAddress({ ...newAddress, street: e.target.value })} />
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <input required type="text" placeholder="City" className="w-full p-2.5 border border-neutral-200 rounded-sm text-xs focus:border-[#c6a87c] outline-none"
+                                                <input required type="text" placeholder="City" className="w-full p-2.5 border border-neutral-200 rounded-sm text-xs focus:border-primary outline-none"
                                                     value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} />
                                             </div>
                                             <div>
-                                                <input required type="text" placeholder="Zip Code" className="w-full p-2.5 border border-neutral-200 rounded-sm text-xs focus:border-[#c6a87c] outline-none"
+                                                <input required type="text" placeholder="Zip Code" className="w-full p-2.5 border border-neutral-200 rounded-sm text-xs focus:border-primary outline-none"
                                                     value={newAddress.zip} onChange={e => setNewAddress({ ...newAddress, zip: e.target.value })} />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <input required type="text" placeholder="State" className="w-full p-2.5 border border-neutral-200 rounded-sm text-xs focus:border-[#c6a87c] outline-none"
+                                                <input required type="text" placeholder="State" className="w-full p-2.5 border border-neutral-200 rounded-sm text-xs focus:border-primary outline-none"
                                                     value={newAddress.state} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} />
                                             </div>
                                             <div>
@@ -408,14 +464,14 @@ export default function CartPage() {
                                         <div className="flex items-center justify-between pt-2">
                                             <div className="flex items-center gap-2">
                                                 <input type="checkbox" id="def" checked={newAddress.isDefault} onChange={e => setNewAddress({ ...newAddress, isDefault: e.target.checked })}
-                                                    className="w-3.5 h-3.5 border-neutral-300 text-[#c6a87c] focus:ring-[#c6a87c]"
+                                                    className="w-3.5 h-3.5 border-neutral-300 text-primary focus:ring-primary"
                                                 />
                                                 <label htmlFor="def" className="text-xs text-neutral-600 font-light cursor-pointer">Default</label>
                                             </div>
 
                                             <div className="flex gap-2">
                                                 <button type="button" onClick={() => setShowAddressForm(false)} className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-neutral-50 text-neutral-500 transition-colors">Cancel</button>
-                                                <button type="submit" disabled={addingAddress} className="px-4 py-2 bg-[#1a1a1a] text-white text-[10px] font-bold uppercase tracking-widest hover:bg-[#c6a87c] disabled:opacity-50 transition-colors rounded-sm">
+                                                <button type="submit" disabled={addingAddress} className="px-4 py-2 bg-foreground text-white text-[10px] font-bold uppercase tracking-widest hover:bg-primary disabled:opacity-50 transition-colors rounded-sm">
                                                     {addingAddress ? '...' : 'Save'}
                                                 </button>
                                             </div>
@@ -427,13 +483,13 @@ export default function CartPage() {
 
                         {/* Cart Items - NOW SECOND */}
                         <section>
-                            <h2 className="font-serif text-2xl text-[#1a1a1a] mb-6 flex items-center gap-3">
-                                <span className="w-8 h-8 rounded-full bg-neutral-100 text-[#1a1a1a] flex items-center justify-center text-xs font-bold">2</span>
+                            <h2 className="font-serif text-2xl text-foreground mb-6 flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-full bg-neutral-100 text-foreground flex items-center justify-center text-xs font-bold">2</span>
                                 Review Items ({cart.items.length})
                             </h2>
                             <div className="space-y-8">
                                 <AnimatePresence>
-                                    {cart.items.map((item: any) => (
+                                    {cart.items.map((item) => (
                                         <motion.div
                                             key={item.id}
                                             layout
@@ -442,27 +498,32 @@ export default function CartPage() {
                                             exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                                             className="flex gap-6 md:gap-8 bg-white p-6 rounded-sm border border-neutral-100 shadow-sm"
                                         >
-                                            <div className="w-24 h-32 md:w-32 md:h-40 bg-[#f4f1ea] shrink-0 overflow-hidden relative">
+                                            <div className="w-24 h-32 md:w-32 md:h-40 bg-surface-highlight shrink-0 overflow-hidden relative">
                                                 {item.product.images[0] && (
-                                                    <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover" />
+                                                    <Image
+                                                        src={item.product.images[0]}
+                                                        alt={item.product.name}
+                                                        fill
+                                                        className="object-cover"
+                                                    />
                                                 )}
                                             </div>
                                             <div className="flex-1 flex flex-col">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
                                                         <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mb-1">{item.product.category?.name}</p>
-                                                        <Link href={`./shop/${item.product.id}`} className="hover:text-[#c6a87c] transition-colors">
-                                                            <h3 className="font-serif text-xl text-[#1a1a1a]">{item.product.name}</h3>
+                                                        <Link href={`./shop/${item.product.id}`} className="hover:text-primary transition-colors">
+                                                            <h3 className="font-serif text-xl text-foreground">{item.product.name}</h3>
                                                         </Link>
                                                     </div>
                                                     <div className="text-right">
-                                                        {item.product.isOnSale ? (
+                                                        {item.product.isOnSale && item.product.salePercentage ? (
                                                             <>
-                                                                <p className="font-medium text-red-700 font-serif text-lg">${(Number(item.product.price) * (1 - item.product.salePercentage / 100) * item.quantity).toFixed(2)}</p>
-                                                                <p className="text-xs text-neutral-400 line-through">${(Number(item.product.price) * item.quantity).toFixed(2)}</p>
+                                                                <p className="font-medium text-red-700 font-serif text-lg">₹{(Number(item.product.price) * (1 - item.product.salePercentage / 100) * item.quantity).toFixed(2)}</p>
+                                                                <p className="text-xs text-neutral-400 line-through">₹{(Number(item.product.price) * item.quantity).toFixed(2)}</p>
                                                             </>
                                                         ) : (
-                                                            <p className="font-medium text-[#1a1a1a] font-serif text-lg">${(Number(item.product.price) * item.quantity).toFixed(2)}</p>
+                                                            <p className="font-medium text-foreground font-serif text-lg">₹{(Number(item.product.price) * item.quantity).toFixed(2)}</p>
                                                         )}
                                                     </div>
                                                 </div>
@@ -476,7 +537,7 @@ export default function CartPage() {
                                                         >
                                                             <Minus size={14} />
                                                         </button>
-                                                        <span className="w-8 text-center text-sm font-medium text-[#1a1a1a]">{item.quantity}</span>
+                                                        <span className="w-8 text-center text-sm font-medium text-foreground">{item.quantity}</span>
                                                         <button
                                                             onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
                                                             className="w-8 h-8 flex items-center justify-center hover:bg-neutral-50 text-neutral-500 transition-colors"
@@ -499,7 +560,7 @@ export default function CartPage() {
                     {/* Order Summary & Payment */}
                     <div className="lg:col-span-1">
                         <div className="bg-white p-8 rounded-sm sticky top-28 border border-neutral-100 shadow-sm">
-                            <h3 className="font-serif text-2xl mb-8 text-[#1a1a1a]">Order Summary</h3>
+                            <h3 className="font-serif text-2xl mb-8 text-foreground">Order Summary</h3>
 
                             {/* Shipping To Preview */}
                             <div className="mb-8">
@@ -507,19 +568,19 @@ export default function CartPage() {
                                     <label className="block text-[10px] font-bold uppercase tracking-widest text-neutral-400">Shipping To</label>
                                     <button
                                         onClick={scrollToAddress}
-                                        className="text-[10px] font-bold uppercase tracking-widest text-[#c6a87c] hover:underline"
+                                        className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline"
                                     >
                                         Change
                                     </button>
                                 </div>
 
                                 {selectedAddress ? (
-                                    <div className="p-4 border border-neutral-200 rounded-sm bg-[#faf9f6]/50">
+                                    <div className="p-4 border border-neutral-200 rounded-sm bg-surface/50">
                                         <div className="flex items-center gap-2 mb-2">
-                                            {selectedAddress.tag === 'Home' && <Home size={12} className="text-[#c6a87c]" />}
-                                            {selectedAddress.tag === 'Work' && <Briefcase size={12} className="text-[#c6a87c]" />}
-                                            {selectedAddress.tag === 'Other' && <User size={12} className="text-[#c6a87c]" />}
-                                            <span className="font-bold text-xs uppercase text-[#1a1a1a]">{selectedAddress.tag}</span>
+                                            {selectedAddress.tag === 'Home' && <Home size={12} className="text-primary" />}
+                                            {selectedAddress.tag === 'Work' && <Briefcase size={12} className="text-primary" />}
+                                            {selectedAddress.tag === 'Other' && <User size={12} className="text-primary" />}
+                                            <span className="font-bold text-xs uppercase text-foreground">{selectedAddress.tag}</span>
                                         </div>
                                         <p className="text-sm text-neutral-600 mb-0.5 line-clamp-1">{selectedAddress.street}</p>
                                         <p className="text-xs text-neutral-400">{selectedAddress.city}, {selectedAddress.zip}</p>
@@ -546,21 +607,21 @@ export default function CartPage() {
                                                 value={couponCode}
                                                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                                                 placeholder="Enter code"
-                                                className="w-full pl-9 pr-3 py-3 border border-neutral-200 rounded-sm text-sm focus:border-[#c6a87c] outline-none placeholder:font-light"
+                                                className="w-full pl-9 pr-3 py-3 border border-neutral-200 rounded-sm text-sm focus:border-primary outline-none placeholder:font-light"
                                             />
                                         </div>
                                         <button
                                             onClick={handleApplyCoupon}
                                             disabled={validatingCoupon || !couponCode.trim()}
-                                            className="px-5 py-3 bg-[#faf9f6] text-[#1a1a1a] border border-neutral-200 rounded-sm text-xs font-bold uppercase tracking-widest hover:border-[#c6a87c] hover:text-[#c6a87c] disabled:opacity-50 transition-colors"
+                                            className="px-5 py-3 bg-surface text-foreground border border-neutral-200 rounded-sm text-xs font-bold uppercase tracking-widest hover:border-primary hover:text-primary disabled:opacity-50 transition-colors"
                                         >
                                             {validatingCoupon ? '...' : 'Apply'}
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="bg-[#faf9f6]/50 border border-[#c6a87c]/30 rounded-sm p-4 flex items-center justify-between">
+                                    <div className="bg-surface/50 border border-primary/30 rounded-sm p-4 flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm font-bold text-[#c6a87c] mb-1">{appliedCoupon.code} Applied</p>
+                                            <p className="text-sm font-bold text-primary mb-1">{appliedCoupon.code} Applied</p>
                                             <p className="text-[10px] text-neutral-500 uppercase tracking-wide">
                                                 Savings: ₹{appliedCoupon.discount.toFixed(2)}
                                             </p>
@@ -582,35 +643,35 @@ export default function CartPage() {
                             <div className="space-y-4 mb-8">
                                 <div className="flex justify-between text-neutral-600 text-sm font-light">
                                     <span>Subtotal</span>
-                                    <span>₹{subtotal.toFixed(2)}</span>
+                                    <span>₹{currentSubtotal.toFixed(2)}</span>
                                 </div>
                                 {appliedCoupon && (
-                                    <div className="flex justify-between text-[#c6a87c] text-sm">
+                                    <div className="flex justify-between text-primary text-sm">
                                         <span>Discount</span>
                                         <span>-₹{appliedCoupon.discount.toFixed(2)}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between text-neutral-600 text-sm font-light">
                                     <span>Shipping</span>
-                                    <span>{shipping === 0 ? 'Complimentary' : `₹${shipping.toFixed(2)}`}</span>
+                                    <span>{shippingCost === 0 ? 'Complimentary' : `₹${shippingCost.toFixed(2)}`}</span>
                                 </div>
                                 <div className="h-px bg-neutral-100 my-4" />
-                                <div className="flex justify-between font-serif text-xl text-[#1a1a1a]">
+                                <div className="flex justify-between font-serif text-xl text-foreground">
                                     <span>Total</span>
-                                    <span>₹{(total - (appliedCoupon?.discount || 0)).toFixed(2)}</span>
+                                    <span>₹{(currentTotal - (appliedCoupon?.discount || 0)).toFixed(2)}</span>
                                 </div>
                             </div>
 
                             {/* Payment Method */}
-                            <div className="mb-8 p-4 border border-neutral-200 rounded-sm bg-[#faf9f6]/30">
+                            <div className="mb-8 p-4 border border-neutral-200 rounded-sm bg-surface/30">
                                 <label className="flex items-start gap-3 cursor-pointer">
                                     <div className="mt-1">
-                                        <div className="w-4 h-4 rounded-full border border-[#c6a87c] flex items-center justify-center">
-                                            <div className="w-2 h-2 bg-[#c6a87c] rounded-full" />
+                                        <div className="w-4 h-4 rounded-full border border-primary flex items-center justify-center">
+                                            <div className="w-2 h-2 bg-primary rounded-full" />
                                         </div>
                                     </div>
                                     <div>
-                                        <span className="block font-bold text-[#1a1a1a] text-sm uppercase tracking-wide mb-1">Cash on Delivery</span>
+                                        <span className="block font-bold text-foreground text-sm uppercase tracking-wide mb-1">Cash on Delivery</span>
                                         <span className="block text-xs text-neutral-500 font-light">Pay comfortably upon receipt.</span>
                                     </div>
                                 </label>
@@ -619,7 +680,7 @@ export default function CartPage() {
                             <button
                                 onClick={handlePlaceOrder}
                                 disabled={processing}
-                                className="w-full bg-[#1a1a1a] text-white py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-[#c6a87c] transition-all flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed group shadow-lg shadow-neutral-200"
+                                className="w-full bg-foreground text-white py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-primary transition-all flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed group shadow-lg shadow-neutral-200"
                             >
                                 {processing ? <Loader2 className="animate-spin" size={16} /> : (
                                     <>Complete Order <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" /></>
@@ -627,9 +688,9 @@ export default function CartPage() {
                             </button>
 
                             <div className="mt-6 flex items-center justify-center gap-4 opacity-50 grayscale">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1280px-Mastercard-logo.svg.png" alt="Mastercard" className="h-4" />
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Visa.svg/1200px-Visa.svg.png" alt="Visa" className="h-3" />
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/PayPal.svg/2560px-PayPal.svg.png" alt="PayPal" className="h-3" />
+                                <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1280px-Mastercard-logo.svg.png" alt="Mastercard" width={24} height={16} className="h-4 w-auto" />
+                                <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Visa.svg/1200px-Visa.svg.png" alt="Visa" width={32} height={12} className="h-3 w-auto" />
+                                <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/PayPal.svg/2560px-PayPal.svg.png" alt="PayPal" width={48} height={12} className="h-3 w-auto" />
                             </div>
 
                             <p className="text-[10px] text-neutral-400 text-center mt-6 font-light">

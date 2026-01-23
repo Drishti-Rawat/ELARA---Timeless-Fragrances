@@ -4,6 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { couponRatelimit } from "@/lib/rate-limit";
 
+export interface CouponActionResponse<T = unknown> {
+    success: boolean;
+    error?: string;
+    coupon?: T;
+    coupons?: T[];
+}
+
 // Admin: Create a new coupon
 export async function createCouponAction(data: {
     code: string;
@@ -32,7 +39,14 @@ export async function createCouponAction(data: {
             }
         });
 
-        return { success: true, coupon };
+        return {
+            success: true,
+            coupon: {
+                ...coupon,
+                discountValue: Number(coupon.discountValue),
+                minOrderValue: coupon.minOrderValue ? Number(coupon.minOrderValue) : null
+            }
+        };
     } catch (error) {
         console.error("Create coupon error:", error);
         return { success: false, error: "Failed to create coupon. Code might already exist." };
@@ -49,7 +63,13 @@ export async function getAllCouponsAction() {
             orderBy: { createdAt: 'desc' }
         });
 
-        return { success: true, coupons };
+        const formattedCoupons = coupons.map(coupon => ({
+            ...coupon,
+            discountValue: Number(coupon.discountValue),
+            minOrderValue: coupon.minOrderValue ? Number(coupon.minOrderValue) : null
+        }));
+
+        return { success: true, coupons: formattedCoupons };
     } catch (error) {
         console.error("Get coupons error:", error);
         return { success: false, error: "Failed to fetch coupons" };
@@ -70,7 +90,14 @@ export async function toggleCouponStatusAction(id: string) {
             data: { isActive: !coupon.isActive }
         });
 
-        return { success: true, coupon: updated };
+        return {
+            success: true,
+            coupon: {
+                ...updated,
+                discountValue: Number(updated.discountValue),
+                minOrderValue: updated.minOrderValue ? Number(updated.minOrderValue) : null
+            }
+        };
     } catch (error) {
         console.error("Toggle coupon error:", error);
         return { success: false, error: "Failed to update coupon" };
@@ -95,14 +122,13 @@ export async function deleteCouponAction(id: string) {
 export async function validateCouponAction(
     code: string,
     orderTotal: number,
-    cartItems?: any[] // Pass cart items to check for sale products
+    cartItems?: { product?: { isOnSale: boolean } }[]
 ) {
     try {
         const session = await getSession();
         if (!session) return { success: false, error: "Unauthorized" };
         const userId = session.userId;
 
-        // Rate Limiting: 10 attempts per minute per user/session
         const { success } = await couponRatelimit.limit(userId);
         if (!success) {
             return {
@@ -136,12 +162,10 @@ export async function validateCouponAction(
             return { success: false, error: "This coupon has reached its usage limit" };
         }
 
-        // Check if user already used this coupon
         if (coupon.usages.length > 0) {
             return { success: false, error: "You've already used this coupon" };
         }
 
-        // Check if coupon is for first order only
         if (coupon.firstOrderOnly) {
             const previousOrders = await prisma.order.count({
                 where: { userId }
@@ -152,9 +176,8 @@ export async function validateCouponAction(
             }
         }
 
-        // Check if coupon excludes sale items and cart has sale items
         if (coupon.excludeSaleItems && cartItems && cartItems.length > 0) {
-            const hasSaleItems = cartItems.some((item: any) => item.product?.isOnSale);
+            const hasSaleItems = cartItems.some((item) => item.product?.isOnSale);
             if (hasSaleItems) {
                 return {
                     success: false,
@@ -163,22 +186,22 @@ export async function validateCouponAction(
             }
         }
 
-        if (coupon.minOrderValue && orderTotal < Number(coupon.minOrderValue)) {
+        const minOrderValue = coupon.minOrderValue ? Number(coupon.minOrderValue) : 0;
+        if (minOrderValue > 0 && orderTotal < minOrderValue) {
             return {
                 success: false,
-                error: `Minimum order value of ₹${Number(coupon.minOrderValue).toFixed(2)} required`
+                error: `Minimum order value of ₹${minOrderValue.toFixed(2)} required`
             };
         }
 
-        // Calculate discount
         let discount = 0;
+        const discountValue = Number(coupon.discountValue);
         if (coupon.discountType === 'PERCENTAGE') {
-            discount = (orderTotal * Number(coupon.discountValue)) / 100;
+            discount = (orderTotal * discountValue) / 100;
         } else {
-            discount = Number(coupon.discountValue);
+            discount = discountValue;
         }
 
-        // Ensure discount doesn't exceed order total
         discount = Math.min(discount, orderTotal);
 
         return {
@@ -186,7 +209,7 @@ export async function validateCouponAction(
             coupon: {
                 code: coupon.code,
                 discountType: coupon.discountType,
-                discountValue: Number(coupon.discountValue),
+                discountValue: discountValue,
                 discount: discount
             }
         };

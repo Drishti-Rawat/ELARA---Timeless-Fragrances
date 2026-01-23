@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { Gender } from "@prisma/client";
 
 // Bulk apply sale to category
 export async function bulkApplySaleByCategoryAction(
@@ -138,7 +139,7 @@ export async function getProductsCountByFilterAction(filter: {
     gender?: 'MEN' | 'WOMEN' | 'UNISEX';
 }) {
     try {
-        const where: any = {};
+        const where: { categoryId?: string; gender?: Gender; price?: { gte?: number; lte?: number } } = {};
 
         if (filter.categoryId) where.categoryId = filter.categoryId;
         if (filter.gender) where.gender = filter.gender;

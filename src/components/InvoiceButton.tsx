@@ -2,6 +2,13 @@
 
 import { Download } from 'lucide-react';
 
+interface Address {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+}
+
 export interface InvoiceData {
     invoiceNumber: string;
     orderNumber: string;
@@ -9,7 +16,7 @@ export interface InvoiceData {
     customer: {
         name: string;
         email: string;
-        address: any;
+        address: Address | null;
     };
     items: Array<{
         name: string;
@@ -20,10 +27,10 @@ export interface InvoiceData {
     }>;
     subtotal: number;
     discount: number;
-    couponCode?: string;
+    couponCode?: string | null;
     total: number;
     status: string;
-    trackingNumber?: string;
+    trackingNumber?: string | null;
 }
 
 export const downloadInvoiceHTML = (invoice: InvoiceData) => {
@@ -160,7 +167,7 @@ export default function InvoiceButton({ invoice }: { invoice: InvoiceData }) {
     return (
         <button
             onClick={() => downloadInvoiceHTML(invoice)}
-            className="flex items-center gap-2 text-sm text-[#1a1a1a] hover:text-[#c6a87c] hover:underline font-medium transition-colors"
+            className="flex items-center gap-2 text-sm text-foreground hover:text-primary hover:underline font-medium transition-colors"
         >
             <Download size={14} /> Download Invoice
         </button>

@@ -1,15 +1,60 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { generateInvoiceDataAction } from '@/app/actions/invoice';
 import { downloadInvoiceHTML, InvoiceData } from '@/components/InvoiceButton';
 import Loading from '@/components/Loading';
 import { getOrdersAction, updateOrderStatusAction, getDeliveryAgentsAction, assignAgentToOrderAction } from '@/app/actions/admin';
-import { Search, Filter, Truck, Loader2, User, ChevronLeft, ChevronRight, CheckCircle, Clock, XCircle, RotateCcw, FileText } from 'lucide-react';
+import { Search, Truck, Loader2, User, ChevronLeft, ChevronRight, Clock, FileText } from 'lucide-react';
+
+interface OrderItem {
+    id: string;
+    product: {
+        id: string;
+        name: string;
+        images: string[];
+        gender: string;
+        price: number;
+    };
+    quantity: number;
+    price: number;
+}
+
+interface Order {
+    id: string;
+    status: string;
+    createdAt: string | Date;
+    trackingNumber?: string | null;
+    total: number;
+    subtotal?: number;
+    discount: number;
+    couponCode?: string | null;
+    deliveryAddress?: {
+        tag?: string | null;
+        street: string;
+        city: string;
+        state: string;
+        zip: string;
+        phone: string;
+    } | null;
+    user?: {
+        name?: string | null;
+        email: string;
+    } | null;
+    items: OrderItem[];
+    deliveryAgentId?: string | null;
+}
+
+interface DeliveryAgent {
+    id: string;
+    name: string;
+    isAvailable: boolean;
+}
 
 export default function OrdersPage() {
-    const [orders, setOrders] = useState<any[]>([]);
-    const [agents, setAgents] = useState<any[]>([]);
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [agents, setAgents] = useState<DeliveryAgent[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
@@ -20,51 +65,78 @@ export default function OrdersPage() {
     const [filter, setFilter] = useState<'active' | 'history' | 'all'>('active');
     const [pagination, setPagination] = useState({ total: 0, pages: 1 });
 
-    const fetchData = async () => {
-        setLoading(true);
-        const [ordersRes, agentsRes] = await Promise.all([
-            getOrdersAction(page, 10, filter),
-            getDeliveryAgentsAction()
-        ]);
+    const fetchData = useCallback(async (showLoading = true) => {
+        if (showLoading) setLoading(true);
+        try {
+            const [ordersRes, agentsRes] = await Promise.all([
+                getOrdersAction(page, 10, filter),
+                getDeliveryAgentsAction()
+            ]);
 
-        if (ordersRes.success) {
-            setOrders(ordersRes.orders || []);
-            setPagination(ordersRes.pagination || { total: 0, pages: 1 });
+            if (ordersRes.success && ordersRes.orders) {
+                setOrders(ordersRes.orders as Order[]);
+                setPagination(ordersRes.pagination || { total: 0, pages: 1 });
+            }
+            if (agentsRes.success && agentsRes.agents) {
+                setAgents(agentsRes.agents as DeliveryAgent[]);
+            }
+        } catch (err) {
+            console.error("Order Page Data Fetch Error:", err);
+        } finally {
+            if (showLoading) setLoading(false);
         }
-        if (agentsRes.success) setAgents(agentsRes.agents || []);
-        setLoading(false);
-    };
+    }, [page, filter]);
 
     useEffect(() => {
         fetchData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, filter]);
+    }, [fetchData]);
 
     const handleStatusChange = async (orderId: string, newStatus: string) => {
         setUpdatingOrderId(orderId);
-        const res = await updateOrderStatusAction(orderId, newStatus);
-        if (res.success) fetchData();
-        else alert('Failed to update status');
-        setUpdatingOrderId(null);
+        try {
+            const res = await updateOrderStatusAction(orderId, newStatus);
+            if (res.success) {
+                await fetchData(false);
+            } else {
+                alert(res.error || 'Failed to update status');
+            }
+        } catch {
+            alert('An unexpected error occurred');
+        } finally {
+            setUpdatingOrderId(null);
+        }
     };
 
     const handleAgentAssign = async (orderId: string, agentId: string) => {
         setUpdatingOrderId(orderId);
-        const res = await assignAgentToOrderAction(orderId, agentId);
-        if (res.success) fetchData();
-        else alert('Failed to assign agent');
-        setUpdatingOrderId(null);
+        try {
+            const res = await assignAgentToOrderAction(orderId, agentId);
+            if (res.success) {
+                await fetchData(false);
+            } else {
+                alert(res.error || 'Failed to assign agent');
+            }
+        } catch {
+            alert('An unexpected error occurred');
+        } finally {
+            setUpdatingOrderId(null);
+        }
     };
 
     const handleDownloadInvoice = async (orderId: string) => {
         setDownloadingInvoiceId(orderId);
-        const res = await generateInvoiceDataAction(orderId);
-        if (res.success && res.invoice) {
-            downloadInvoiceHTML(res.invoice as InvoiceData);
-        } else {
-            alert(res.error || 'Failed to generate invoice');
+        try {
+            const res = await generateInvoiceDataAction(orderId);
+            if (res.success && res.invoice) {
+                downloadInvoiceHTML(res.invoice as InvoiceData);
+            } else {
+                alert(res.error || 'Failed to generate invoice');
+            }
+        } catch {
+            alert('An unexpected error occurred');
+        } finally {
+            setDownloadingInvoiceId(null);
         }
-        setDownloadingInvoiceId(null);
     };
 
     const handlePageChange = (newPage: number) => {
@@ -85,8 +157,6 @@ export default function OrdersPage() {
                     <h2 className="text-3xl font-serif font-bold text-gray-900">Orders</h2>
                     <p className="text-gray-500 mt-1">Track and manage customer orders.</p>
                 </div>
-
-                {/* Stats / Counts could go here */}
             </div>
 
             {/* Controls Bar */}
@@ -199,7 +269,7 @@ export default function OrdersPage() {
                                                 <select
                                                     value={order.status}
                                                     onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                                                    className="h-9 pl-3 pr-8 bg-foreground text-white text-[10px] font-bold uppercase tracking-widest rounded-sm outline-none focus:ring-1 focus:ring-[#c6a87c] cursor-pointer hover:bg-neutral-800 transition-colors"
+                                                    className="h-9 pl-3 pr-8 bg-foreground text-white text-[10px] font-bold uppercase tracking-widest rounded-sm outline-none focus:ring-1 focus:ring-primary cursor-pointer hover:bg-neutral-800 transition-colors"
                                                 >
                                                     <option value="PENDING">Pending</option>
                                                     <option value="PROCESSING">Processing</option>
@@ -270,12 +340,12 @@ export default function OrdersPage() {
                                     <div className="lg:col-span-2 border-l border-neutral-100 lg:pl-8">
                                         <h4 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-4 border-b border-neutral-100 pb-2">Order Summary</h4>
                                         <div className="space-y-4 mb-6">
-                                            {order.items.map((item: any) => (
+                                            {order.items.map((item) => (
                                                 <div key={item.id} className="flex items-start justify-between group">
                                                     <div className="flex gap-4">
                                                         <div className="w-12 h-16 bg-surface rounded-sm overflow-hidden shrink-0 relative">
                                                             {item.product.images[0] ? (
-                                                                <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover" />
+                                                                <Image src={item.product.images[0]} alt={item.product.name} fill className="object-cover" />
                                                             ) : (
                                                                 <div className="w-full h-full flex items-center justify-center text-neutral-300 text-[8px]">NO IMG</div>
                                                             )}

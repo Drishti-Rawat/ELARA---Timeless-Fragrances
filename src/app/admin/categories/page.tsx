@@ -1,25 +1,38 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { createCategoryAction, getCategoriesAction } from '@/app/actions/admin';
 import { Plus, Loader2 } from 'lucide-react';
+import Image from 'next/image';
+
+interface Category {
+    id: string;
+    name: string;
+    image: string | null;
+    products?: {
+        id: string;
+        name: string;
+    }[];
+}
 
 export default function CategoriesPage() {
-    const [categories, setCategories] = useState<any[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const fetchCategories = async () => {
-        setLoading(true);
+    const fetchCategories = useCallback(async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         const res = await getCategoriesAction();
-        if (res.success) setCategories(res.categories || []);
+        if (res.success) setCategories(res.categories as Category[] || []);
         setLoading(false);
-    };
+    }, []);
 
     useEffect(() => {
-        fetchCategories();
-    }, []);
+        (async () => {
+            await fetchCategories(false);
+        })();
+    }, [fetchCategories]);
 
     const uploadImage = async (file: File) => {
         const fileExt = file.name.split('.').pop();
@@ -45,7 +58,7 @@ export default function CategoriesPage() {
 
             const res = await createCategoryAction(formData);
             if (res.success) {
-                fetchCategories();
+                fetchCategories(true);
                 (e.target as HTMLFormElement).reset();
             } else {
                 alert(res.error);
@@ -95,8 +108,12 @@ export default function CategoriesPage() {
                         <div key={cat.id} className="group relative bg-white border border-gray-100 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
                             <div className="aspect-[4/3] bg-gray-100 relative">
                                 {cat.image ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                                    <Image
+                                        src={cat.image}
+                                        alt={cat.name}
+                                        fill
+                                        className="object-cover"
+                                    />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-gray-300">
                                         <Plus size={24} className="opacity-20" />

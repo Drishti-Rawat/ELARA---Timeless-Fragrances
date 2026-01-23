@@ -41,7 +41,7 @@ export async function generateInvoiceDataAction(orderId: string) {
             customer: {
                 name: order.user.name || 'Customer',
                 email: order.user.email,
-                address: order.deliveryAddress as any
+                address: order.deliveryAddress as { street: string; city: string; state: string; zip: string } | null
             },
             items: order.items.map(item => ({
                 name: item.product.name,

@@ -15,12 +15,23 @@ export async function getUserAddressesAction() {
             orderBy: { isDefault: 'desc' } // Default first
         });
         return { success: true, addresses };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to load addresses" };
     }
 }
 
-export async function addAddressAction(data: any) {
+export interface AddressInput {
+    tag?: string;
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    country?: string;
+    phone: string;
+    isDefault?: boolean;
+}
+
+export async function addAddressAction(data: AddressInput) {
     try {
         const session = await getSession();
         if (!session) return { success: false, error: "Unauthorized" };
@@ -71,7 +82,7 @@ export async function deleteAddressAction(addressId: string) {
         });
         revalidatePath('/cart');
         return { success: true };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to delete address" };
     }
 }

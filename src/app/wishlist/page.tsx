@@ -1,20 +1,43 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { getWishlistAction, toggleWishlistAction, addToCartAction } from '../actions/shop';
 import { getUserSessionAction } from '../actions/auth-custom';
 import { Heart, ShoppingBag } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import Loading from '@/components/Loading';
 
+interface WishlistItem {
+    id: string;
+    productId: string;
+    product: {
+        id: string;
+        name: string;
+        price: number;
+        images: string[];
+        stock: number;
+        isOnSale: boolean;
+        salePercentage: number;
+        category?: {
+            name: string;
+        };
+    };
+}
+
+interface UserSession {
+    userId: string;
+    role: string;
+    name: string | null;
+    email: string | null;
+}
+
 export default function WishlistPage() {
-    const router = useRouter();
-    const [items, setItems] = useState<any[]>([]);
+    const [items, setItems] = useState<WishlistItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<UserSession | null>(null);
 
     // Animation states
     const [flyAnimation, setFlyAnimation] = useState<{ src: string, start: { x: number, y: number }, target: { x: number, y: number } } | null>(null);
@@ -25,30 +48,36 @@ export default function WishlistPage() {
     const [hasMore, setHasMore] = useState(true);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
 
-    const loadInitialData = async () => {
+    const loadInitialData = useCallback(async () => {
         setLoading(true);
         const session = await getUserSessionAction();
-        setUser(session);
+        setUser(session as UserSession);
         if (session) {
             const res = await getWishlistAction(1, 9);
-            if (res.success) {
-                setItems(res.items || []);
+            if (res.success && res.items) {
+                setItems(res.items as WishlistItem[]);
                 setHasMore((res.items?.length || 0) === 9);
                 setPage(1);
             }
         }
         setLoading(false);
-    };
+    }, []);
 
-    const loadMore = async () => {
+    useEffect(() => {
+        (async () => {
+            await loadInitialData();
+        })();
+    }, [loadInitialData]);
+
+    const loadMore = useCallback(async () => {
         if (isFetchingMore || !hasMore || !user) return;
 
         setIsFetchingMore(true);
         const nextPage = page + 1;
         const res = await getWishlistAction(nextPage, 9);
 
-        if (res.success) {
-            const newItems = res.items || [];
+        if (res.success && res.items) {
+            const newItems = res.items as WishlistItem[];
             if (newItems.length > 0) {
                 setItems(prev => [...prev, ...newItems]);
                 setPage(nextPage);
@@ -56,11 +85,7 @@ export default function WishlistPage() {
             setHasMore(newItems.length === 9);
         }
         setIsFetchingMore(false);
-    };
-
-    useEffect(() => {
-        loadInitialData();
-    }, []);
+    }, [isFetchingMore, hasMore, user, page]);
 
     // Intersection Observer for Infinite Scroll
     useEffect(() => {
@@ -77,11 +102,11 @@ export default function WishlistPage() {
         if (target) observer.observe(target);
 
         return () => observer.disconnect();
-    }, [hasMore, loading, isFetchingMore, page, user]);
+    }, [hasMore, loading, isFetchingMore, loadMore]);
 
     const handleRemove = async (productId: string) => {
         // Optimistic update
-        setItems((prev: any) => prev.filter((item: any) => item.productId !== productId));
+        setItems((prev: WishlistItem[]) => prev.filter((item) => item.productId !== productId));
         await toggleWishlistAction(productId);
     };
 
@@ -89,12 +114,12 @@ export default function WishlistPage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-[#faf9f6]">
+            <div className="min-h-screen bg-surface">
                 <Navbar />
                 <div className="pt-32 pb-20 px-4 text-center">
-                    <h2 className="text-3xl font-serif mb-4 text-[#1a1a1a]">Your Sanctuary</h2>
+                    <h2 className="text-3xl font-serif mb-4 text-foreground">Your Sanctuary</h2>
                     <p className="text-neutral-500 mb-8 font-light">Please sign in to access your curated collection of essences.</p>
-                    <Link href="/login" className="inline-block bg-[#1a1a1a] text-white px-10 py-4 text-xs uppercase tracking-[0.2em] font-bold hover:bg-[#c6a87c] transition-colors">
+                    <Link href="/login" className="inline-block bg-foreground text-white px-10 py-4 text-xs uppercase tracking-[0.2em] font-bold hover:bg-primary transition-colors">
                         Enter
                     </Link>
                 </div>
@@ -104,17 +129,17 @@ export default function WishlistPage() {
 
     if (!loading && items.length === 0) {
         return (
-            <div className="min-h-screen bg-[#faf9f6] flex flex-col">
+            <div className="min-h-screen bg-surface flex flex-col">
                 <Navbar />
-                <div className="flex-grow flex flex-col items-center justify-center px-4 text-center pt-24 pb-12">
+                <div className="grow flex flex-col items-center justify-center px-4 text-center pt-24 pb-12">
                     <div className="w-20 h-20 bg-white border border-dashed border-neutral-300 rounded-full flex items-center justify-center mb-6 shadow-sm">
                         <Heart size={32} className="text-neutral-300" />
                     </div>
-                    <h2 className="text-3xl font-serif mb-3 text-[#1a1a1a]">Your collection is empty</h2>
+                    <h2 className="text-3xl font-serif mb-3 text-foreground">Your collection is empty</h2>
                     <p className="text-neutral-500 mb-8 max-w-sm font-light leading-relaxed">
                         Explore our fragrances and save your favorites here for a timeless collection.
                     </p>
-                    <Link href="/shop" className="inline-block bg-[#1a1a1a] text-white px-10 py-4 text-xs uppercase tracking-[0.2em] font-bold hover:bg-[#c6a87c] transition-colors">
+                    <Link href="/shop" className="inline-block bg-foreground text-white px-10 py-4 text-xs uppercase tracking-[0.2em] font-bold hover:bg-primary transition-colors">
                         Discover Scents
                     </Link>
                 </div>
@@ -123,20 +148,20 @@ export default function WishlistPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#faf9f6]">
+        <div className="min-h-screen bg-surface">
             <Navbar />
 
             <div className="pt-28 pb-10 bg-white border-b border-neutral-100">
                 <div className="container mx-auto px-6 max-w-7xl">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                         <div>
-                            <p className="text-[#c6a87c] text-xs font-bold uppercase tracking-[0.2em] mb-3">Your Collection</p>
-                            <h1 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] leading-tight">
+                            <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-3">Your Collection</p>
+                            <h1 className="font-serif text-4xl md:text-5xl text-foreground leading-tight">
                                 Wishlist
                             </h1>
                         </div>
                         <div className="flex items-center gap-2 text-neutral-400 text-sm">
-                            <span className="font-serif italic text-[#1a1a1a]">{items.length}</span>
+                            <span className="font-serif italic text-foreground">{items.length}</span>
                             <span>Essences Saved</span>
                         </div>
                     </div>
@@ -146,10 +171,10 @@ export default function WishlistPage() {
             <div className="container mx-auto px-4 sm:px-6 max-w-7xl py-12">
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-12">
                     <AnimatePresence>
-                        {items.map((item: any) => {
+                        {items.map((item) => {
                             const product = item.product;
                             const isOnSale = product.isOnSale;
-                            const salePrice = isOnSale ? Number(product.price) * 0.8 : null;
+                            const salePrice = isOnSale ? Number(product.price) * (1 - (product.salePercentage / 100)) : null;
 
                             return (
                                 <motion.div
@@ -161,13 +186,14 @@ export default function WishlistPage() {
                                     className="group flex flex-col h-full"
                                 >
                                     {/* Image Container */}
-                                    <div className="relative aspect-[4/5] overflow-hidden bg-white mb-6 border border-neutral-200/60 transition-all duration-500 group-hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] rounded-sm">
+                                    <div className="relative aspect-4/5 overflow-hidden bg-white mb-6 border border-neutral-200/60 transition-all duration-500 group-hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] rounded-sm">
                                         <Link href={`./shop/${product.id}`} className="block w-full h-full">
                                             {/* Primary Image */}
                                             {product.images[0] ? (
-                                                <img
+                                                <Image
                                                     src={product.images[0]}
                                                     alt={product.name}
+                                                    fill
                                                     className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-105"
                                                 />
                                             ) : (
@@ -178,9 +204,10 @@ export default function WishlistPage() {
 
                                             {/* Secondary Image for Hover Effect */}
                                             {product.images[1] ? (
-                                                <img
+                                                <Image
                                                     src={product.images[1]}
                                                     alt={product.name}
+                                                    fill
                                                     className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out opacity-0 group-hover:opacity-100 group-hover:scale-105"
                                                 />
                                             ) : null}
@@ -219,7 +246,7 @@ export default function WishlistPage() {
                                     </div>
 
                                     {/* Content */}
-                                    <div className="flex flex-col flex-grow">
+                                    <div className="flex flex-col grow">
                                         <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mb-1">
                                             {product.category?.name}
                                         </p>
@@ -350,30 +377,34 @@ export default function WishlistPage() {
                 )}
             </AnimatePresence>
 
-            {/* Fly Animation Image */}
+            {/* Fly Animation */}
             {flyAnimation && flyAnimation.src && (
-                <motion.img
-                    src={flyAnimation.src}
+                <motion.div
                     initial={{
                         position: 'fixed',
                         left: flyAnimation.start.x,
                         top: flyAnimation.start.y,
                         width: 200,
                         opacity: 1,
-                        zIndex: 9999,
-                        borderRadius: '0%'
+                        zIndex: 9999
                     }}
                     animate={{
                         left: flyAnimation.target.x,
                         top: flyAnimation.target.y,
                         width: 20,
                         height: 20,
-                        opacity: 0.5,
-                        borderRadius: '50%'
+                        opacity: 0.5
                     }}
                     transition={{ duration: 0.8, ease: "easeInOut" }}
-                    className="pointer-events-none object-cover shadow-xl"
-                />
+                    className="pointer-events-none rounded-full overflow-hidden shadow-xl"
+                >
+                    <Image
+                        src={flyAnimation.src}
+                        alt="Essence Travel"
+                        fill
+                        className="object-cover"
+                    />
+                </motion.div>
             )}
         </div>
     );

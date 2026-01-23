@@ -2,10 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { getDeliveryAgentsAction, promoteToAgentAction } from '@/app/actions/admin';
-import { Truck, CheckCircle, XCircle, Plus, Search } from 'lucide-react';
+import { Truck, Plus } from 'lucide-react';
+
+export interface Agent {
+    id: string;
+    name: string | null;
+    email: string;
+    phone: string | null;
+    isAvailable: boolean;
+}
 
 export default function AgentsPage() {
-    const [agents, setAgents] = useState<any[]>([]);
+    const [agents, setAgents] = useState<Agent[]>([]);
     const [loading, setLoading] = useState(true);
     const [email, setEmail] = useState('');
     const [promoting, setPromoting] = useState(false);
@@ -18,7 +26,17 @@ export default function AgentsPage() {
     };
 
     useEffect(() => {
-        fetchAgents();
+        let isMounted = true;
+        const fetchAgentsData = async () => {
+            setLoading(true);
+            const res = await getDeliveryAgentsAction();
+            if (isMounted) {
+                if (res.success) setAgents(res.agents as unknown as Agent[] || []);
+                setLoading(false);
+            }
+        };
+        fetchAgentsData();
+        return () => { isMounted = false; };
     }, []);
 
     const handlePromote = async (e: React.FormEvent) => {

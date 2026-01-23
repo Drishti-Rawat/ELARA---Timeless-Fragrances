@@ -1,39 +1,79 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { getUserOrdersAction, updateOrderAddressAction } from '../actions/shop';
 import { cancelOrderAction } from '../actions/order';
 import { generateInvoiceDataAction } from '../actions/invoice';
 import { getUserSessionAction } from '../actions/auth-custom';
-import { Loader2, Package, Truck, Calendar, ArrowRight, MapPin, Edit2, XCircle, Clock, CheckCircle, User, Phone } from 'lucide-react';
+import { Package, Truck, Calendar, XCircle, User, Phone } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import InvoiceButton from '@/components/InvoiceButton';
+import InvoiceButton, { InvoiceData } from '@/components/InvoiceButton';
 import Loading from '@/components/Loading';
+import Image from 'next/image';
+
+interface OrderItem {
+    id: string;
+    quantity: number;
+    price: number;
+    product: {
+        id: string;
+        name: string;
+        images: string[];
+        category: {
+            name: string;
+        } | null;
+    };
+}
+
+interface Order {
+    id: string;
+    status: string;
+    createdAt: string;
+    total: number;
+    deliveryAddress: {
+        tag: string;
+        street: string;
+        city: string;
+        state: string;
+        zip: string;
+        country: string;
+        phone: string;
+    } | null;
+    items: OrderItem[];
+    trackingNumber?: string | null;
+    deliveryAgent?: {
+        name: string;
+        phone?: string | null;
+    } | null;
+}
 
 export default function UserOrdersPage() {
-    const [orders, setOrders] = useState<any[]>([]);
+    const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<{ userId: string; email: string | null; name: string | null; role?: string } | null>(null);
     const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
     const [newAddressRaw, setNewAddressRaw] = useState('');
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         const session = await getUserSessionAction();
         setUser(session);
         if (session) {
             const res = await getUserOrdersAction();
-            if (res.success) setOrders(res.orders || []);
+            if (res.success) setOrders(res.orders as unknown as Order[] || []);
         }
         setLoading(false);
-    };
-
-    useEffect(() => {
-        loadData();
     }, []);
 
-    const handleEditAddress = (order: any) => {
+    useEffect(() => {
+        const fetch = async () => {
+            await loadData();
+        };
+        fetch();
+    }, [loadData]);
+
+    const handleEditAddress = (order: Order) => {
         setEditingOrderId(order.id);
         const addr = order.deliveryAddress;
         // Simple string representation for editing to avoid complexity in this view
@@ -78,14 +118,14 @@ export default function UserOrdersPage() {
         }
     };
 
-    const [invoices, setInvoices] = useState<Record<string, any>>({});
+    const [invoices, setInvoices] = useState<Record<string, InvoiceData>>({});
 
     const getInvoice = async (orderId: string) => {
         if (invoices[orderId]) return invoices[orderId];
 
         const res = await generateInvoiceDataAction(orderId);
         if (res.success && res.invoice) {
-            setInvoices(prev => ({ ...prev, [orderId]: res.invoice }));
+            setInvoices(prev => ({ ...prev, [orderId]: res.invoice as InvoiceData }));
             return res.invoice;
         }
         return null;
@@ -120,7 +160,7 @@ export default function UserOrdersPage() {
                     <div className="text-center py-24 bg-white rounded-sm border border-neutral-200 border-dashed">
                         <Package size={48} className="mx-auto mb-4 text-neutral-300" />
                         <h3 className="font-serif text-2xl text-foreground mb-2">No orders yet</h3>
-                        <p className="text-neutral-500 mb-8 font-light">You haven't placed any orders with us yet.</p>
+                        <p className="text-neutral-500 mb-8 font-light">You haven&apos;t placed any orders with us yet.</p>
                         <Link href="/shop" className="inline-block bg-foreground text-white px-8 py-3 text-xs uppercase tracking-[0.2em] font-bold hover:bg-primary transition-colors">Start Shopping</Link>
                     </div>
                 ) : (
@@ -182,7 +222,7 @@ export default function UserOrdersPage() {
                                                 </div>
                                             ) : (
                                                 <div className="relative pl-4 border-l-2 border-neutral-100 ml-2 space-y-8 py-2">
-                                                    {['PENDING', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'].map((step, index) => {
+                                                    {['PENDING', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'].map((step) => {
                                                         const statusOrder = ['PENDING', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'];
                                                         const currentStatusIndex = statusOrder.indexOf(order.status);
                                                         const stepIndex = statusOrder.indexOf(step);
@@ -262,11 +302,16 @@ export default function UserOrdersPage() {
                                         <div>
                                             <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-6">Items</h4>
                                             <div className="space-y-6">
-                                                {order.items.map((item: any) => (
+                                                {order.items.map((item: OrderItem) => (
                                                     <div key={item.id} className="flex gap-5 items-start group">
                                                         <div className="w-20 h-24 bg-surface overflow-hidden shrink-0 relative border border-neutral-100">
                                                             {item.product.images[0] ? (
-                                                                <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
+                                                                <Image
+                                                                    src={item.product.images[0]}
+                                                                    alt={item.product.name}
+                                                                    fill
+                                                                    className="object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                                                                />
                                                             ) : (
                                                                 <div className="w-full h-full flex items-center justify-center text-[9px] text-neutral-400 uppercase tracking-widest">No Img</div>
                                                             )}

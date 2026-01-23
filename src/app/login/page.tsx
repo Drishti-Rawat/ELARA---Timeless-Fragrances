@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, KeyRound, User, Loader, Phone } from 'lucide-react';
+import { Mail, User, Loader, Phone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { sendOtpAction, verifyOtpAction, registerUserAction } from '../actions/auth-custom';
 
@@ -16,7 +16,7 @@ export default function AuthPage() {
     const [otp, setOtp] = useState('');
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
-    const [address, setAddress] = useState({ street: '', city: '', state: '', zip: '', country: '' });
+    const [address, setAddress] = useState({ street: '', city: '', state: '', zip: '', country: '', phone: '' });
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -125,7 +125,7 @@ export default function AuthPage() {
                 {/* Blurring Glass Effect Card */}
                 <div className="absolute bottom-10 left-10 right-10 p-8 bg-white/10 backdrop-blur-md border border-white/20 text-white z-10 opacity-90 transition-opacity duration-500 hover:opacity-100">
                     <p className="text-[10px] tracking-[0.4em] uppercase mb-4 opacity-80 border-b border-white/30 pb-2 inline-block">Member Privileges</p>
-                    <h2 className="text-3xl font-serif leading-tight">"Scent is the unspoken language of memory."</h2>
+                    <h2 className="text-3xl font-serif leading-tight">&quot;Scent is the unspoken language of memory.&quot;</h2>
                 </div>
             </div>
 

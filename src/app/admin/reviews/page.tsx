@@ -1,29 +1,49 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getAllReviewsAction, replyToReviewAction } from '@/app/actions/reviews';
 import { Star, MessageSquare, Send, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
+
+interface Review {
+    id: string;
+    rating: number;
+    comment: string | null;
+    createdAt: Date | string;
+    adminResponse: string | null;
+    respondedAt: Date | string | null;
+    user: {
+        name: string | null;
+        email: string;
+    };
+    product: {
+        name: string;
+        images: string[];
+    };
+}
 
 export default function AdminReviewsPage() {
-    const [reviews, setReviews] = useState<any[]>([]);
+    const [reviews, setReviews] = useState<Review[]>([]);
     const [loading, setLoading] = useState(true);
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
     const [replyText, setReplyText] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    const loadReviews = async () => {
-        setLoading(true);
+    const loadReviews = useCallback(async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         const res = await getAllReviewsAction();
-        if (res.success) {
-            setReviews(res.reviews || []);
+        if (res.success && res.reviews) {
+            setReviews(res.reviews as Review[]);
         }
         setLoading(false);
-    };
+    }, []);
 
     useEffect(() => {
-        loadReviews();
-    }, []);
+        (async () => {
+            await loadReviews(false);
+        })();
+    }, [loadReviews]);
 
     const handleReply = async (reviewId: string) => {
         if (!replyText.trim()) {
@@ -37,7 +57,7 @@ export default function AdminReviewsPage() {
             alert('Reply sent successfully!');
             setReplyingTo(null);
             setReplyText('');
-            loadReviews();
+            loadReviews(true);
         } else {
             alert(res.error || 'Failed to send reply');
         }
@@ -113,12 +133,13 @@ export default function AdminReviewsPage() {
                             <div className="p-6 border-b border-gray-100">
                                 <div className="flex items-start gap-4">
                                     {/* Product Image */}
-                                    <div className="w-16 h-16 bg-gray-100 rounded-md overflow-hidden shrink-0">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-md overflow-hidden shrink-0 relative">
                                         {review.product.images[0] ? (
-                                            <img
+                                            <Image
                                                 src={review.product.images[0]}
                                                 alt={review.product.name}
-                                                className="w-full h-full object-cover"
+                                                fill
+                                                className="object-cover"
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
@@ -146,7 +167,7 @@ export default function AdminReviewsPage() {
 
                                         {review.comment && (
                                             <p className="text-gray-700 text-sm bg-gray-50 p-3 rounded-md">
-                                                "{review.comment}"
+                                                &quot;{review.comment}&quot;
                                             </p>
                                         )}
                                     </div>
@@ -162,7 +183,7 @@ export default function AdminReviewsPage() {
                                         </div>
                                         <div className="flex-1">
                                             <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                                                Admin Response • {new Date(review.respondedAt).toLocaleDateString()}
+                                                Admin Response • {review.respondedAt ? new Date(review.respondedAt).toLocaleDateString() : ''}
                                             </p>
                                             <p className="text-sm text-gray-700">{review.adminResponse}</p>
                                         </div>

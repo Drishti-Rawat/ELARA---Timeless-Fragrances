@@ -13,7 +13,7 @@ export default function AdminDashboard() {
         orders: 0,
         revenue: 0
     });
-    const [recentOrders, setRecentOrders] = useState<any[]>([]);
+    const [recentOrders, setRecentOrders] = useState<{ id: string, total: number | string, createdAt: string | Date }[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -30,7 +30,7 @@ export default function AdminDashboard() {
             const ordersList = ords.success && ords.orders ? ords.orders : [];
 
             // Calculate Revenue
-            const totalRevenue = ordersList.reduce((acc: number, order: any) => acc + Number(order.total), 0);
+            const totalRevenue = ordersList.reduce((acc: number, order: { total: number | string }) => acc + Number(order.total), 0);
 
             setStats({
                 products: productsCount,
@@ -137,7 +137,7 @@ export default function AdminDashboard() {
     );
 }
 
-function StatCard({ label, value, icon }: { label: string, value: string, icon: any }) {
+function StatCard({ label, value, icon }: { label: string, value: string, icon: React.ReactNode }) {
     return (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-4">

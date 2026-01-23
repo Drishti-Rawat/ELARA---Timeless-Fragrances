@@ -1,14 +1,35 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { createProductAction, getProductsAction, getCategoriesAction, updateProductAction } from '@/app/actions/admin';
 import { Plus, Loader2, Search, ChevronLeft, ChevronRight, X, Edit, Box } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+interface Category {
+    id: string;
+    name: string;
+}
+
+interface Product {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    stock: number;
+    images: string[];
+    categoryId: string;
+    category?: Category;
+    gender: 'MEN' | 'WOMEN' | 'UNISEX';
+    isOnSale: boolean;
+    salePercentage: number;
+    saleEndDate?: string | Date;
+}
+
 export default function ProductsPage() {
-    const [products, setProducts] = useState<any[]>([]);
-    const [categories, setCategories] = useState<any[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -18,28 +39,29 @@ export default function ProductsPage() {
     const [pagination, setPagination] = useState({ total: 0, pages: 1 });
 
     // State for Modals
-    const [editingProduct, setEditingProduct] = useState<any>(null);
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
 
-    const fetchData = async () => {
-        setLoading(true);
+    const fetchData = useCallback(async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         const [prodRes, catRes] = await Promise.all([
             getProductsAction(page, 10),
             getCategoriesAction()
         ]);
-        if (prodRes.success) {
-            setProducts(prodRes.products || []);
+        if (prodRes.success && prodRes.products) {
+            setProducts(prodRes.products as Product[]);
             setPagination(prodRes.pagination || { total: 0, pages: 1 });
         }
-        if (catRes.success) setCategories(catRes.categories || []);
-        setLoading(false);
-    };
+        if (catRes.success) setCategories(catRes.categories as Category[] || []);
+        if (showLoading) setLoading(false);
+    }, [page]);
 
     useEffect(() => {
-        fetchData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page]);
+        (async () => {
+            await fetchData();
+        })();
+    }, [fetchData]);
 
     const uploadImage = async (file: File) => {
         const fileExt = file.name.split('.').pop();
@@ -65,7 +87,7 @@ export default function ProductsPage() {
 
             const res = await createProductAction(formData);
             if (res.success) {
-                fetchData();
+                fetchData(false);
                 setIsCreating(false);
                 (e.target as HTMLFormElement).reset();
             } else {
@@ -80,6 +102,7 @@ export default function ProductsPage() {
 
     const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (!editingProduct) return;
         setIsUpdating(true);
         try {
             const formData = new FormData(e.currentTarget);
@@ -87,12 +110,12 @@ export default function ProductsPage() {
 
             const res = await updateProductAction(formData);
             if (res.success) {
-                fetchData();
+                fetchData(false);
                 setEditingProduct(null);
             } else {
                 alert(res.error);
             }
-        } catch (error) {
+        } catch {
             alert('Failed to update product');
         }
         setIsUpdating(false);
@@ -169,8 +192,7 @@ export default function ProductsPage() {
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 bg-gray-100 rounded-md overflow-hidden relative flex-shrink-0">
                                                     {prod.images[0] && (
-                                                        // eslint-disable-next-line @next/next/no-img-element
-                                                        <img src={prod.images[0]} alt={prod.name} className="object-cover w-full h-full" />
+                                                        <Image src={prod.images[0]} alt={prod.name} fill className="object-cover" />
                                                     )}
                                                 </div>
                                                 <span className="font-medium text-gray-900">{prod.name}</span>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Package, Users, ShoppingBag, LogOut, BarChart3, Star, Tag, Percent, Truck, DollarSign } from 'lucide-react';
+import { LayoutDashboard, Package, Users, ShoppingBag, LogOut, BarChart3, Star, Tag, Percent, Truck } from 'lucide-react';
 import { logoutAction } from '@/app/actions/auth-custom';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -58,7 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
 }
 
-function SidebarItem({ href, icon, label, active }: { href: string, icon: any, label: string, active: boolean }) {
+function SidebarItem({ href, icon, label, active }: { href: string, icon: React.ReactNode, label: string, active: boolean }) {
     return (
         <Link
             href={href}

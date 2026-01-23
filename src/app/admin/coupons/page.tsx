@@ -1,12 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getAllCouponsAction, createCouponAction, toggleCouponStatusAction, deleteCouponAction } from '@/app/actions/coupons';
 import { Tag, Plus, Trash2, ToggleLeft, ToggleRight, Calendar, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+interface Coupon {
+    id: string;
+    code: string;
+    discountType: 'PERCENTAGE' | 'FIXED';
+    discountValue: number;
+    minOrderValue: number | null;
+    maxUses: number | null;
+    usedCount: number;
+    isActive: boolean;
+    firstOrderOnly: boolean;
+    excludeSaleItems: boolean;
+    expiresAt: string | null;
+}
+
 export default function AdminCouponsPage() {
-    const [coupons, setCoupons] = useState<any[]>([]);
+    const [coupons, setCoupons] = useState<Coupon[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({
@@ -20,18 +34,22 @@ export default function AdminCouponsPage() {
         expiresAt: ''
     });
 
-    const loadCoupons = async () => {
-        setLoading(true);
+    const loadCoupons = useCallback(async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         const res = await getAllCouponsAction();
-        if (res.success) {
-            setCoupons(res.coupons || []);
+        if (res.success && res.coupons) {
+            setCoupons(res.coupons as Coupon[]);
+        } else if (!res.success) {
+            alert(res.error || 'Failed to load coupons');
         }
         setLoading(false);
-    };
+    }, []);
 
     useEffect(() => {
-        loadCoupons();
-    }, []);
+        (async () => {
+            await loadCoupons(false);
+        })();
+    }, [loadCoupons]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -125,7 +143,7 @@ export default function AdminCouponsPage() {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Discount Type *</label>
                             <select
                                 value={formData.discountType}
-                                onChange={(e) => setFormData({ ...formData, discountType: e.target.value as any })}
+                                onChange={(e) => setFormData({ ...formData, discountType: e.target.value as 'PERCENTAGE' | 'FIXED' })}
                                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                             >
                                 <option value="PERCENTAGE">Percentage (%)</option>

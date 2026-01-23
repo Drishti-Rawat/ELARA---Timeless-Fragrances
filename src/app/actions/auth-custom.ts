@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from "@/lib/prisma";
+import { AddressInput } from "./address";
 import nodemailer from 'nodemailer';
 import { createSession, deleteSession, getSession } from "@/lib/session";
 import { createHash } from 'crypto';
@@ -136,7 +137,7 @@ export async function verifyOtpAction(email: string, code: string) {
 }
 
 // Reuse existing helpers
-export async function registerUserAction(data: { email: string; name: string; phone?: string; address?: any }) {
+export async function registerUserAction(data: { email: string; name: string; phone?: string; address?: AddressInput }) {
     try {
         const existingUser = await prisma.user.findUnique({
             where: { email: data.email }

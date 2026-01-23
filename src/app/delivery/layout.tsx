@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { Truck, LogOut } from 'lucide-react';
 import { logoutAction } from '@/app/actions/auth-custom';
 import { useRouter } from 'next/navigation';

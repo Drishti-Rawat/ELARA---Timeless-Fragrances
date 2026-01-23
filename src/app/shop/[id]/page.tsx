@@ -1,25 +1,62 @@
 'use client';
 
-
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { getProductDetails, addToCartAction, toggleWishlistAction, submitReviewAction } from '../../actions/shop';
 import { getUserSessionAction } from '../../actions/auth-custom';
 import Navbar from '@/components/Navbar';
-import { Star, Heart, ShoppingBag, Minus, Plus, Share2, Loader2, ArrowLeft, ArrowRight, X, User } from 'lucide-react';
+import { Star, Heart, ShoppingBag, Minus, Plus, Loader2, ArrowLeft, ArrowRight, X, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Loading from '@/components/Loading';
+
+interface Category {
+    id: string;
+    name: string;
+}
+
+interface Review {
+    id: string;
+    rating: number;
+    comment: string;
+    createdAt: string | Date;
+    user: {
+        name: string | null;
+        email: string;
+    };
+    adminResponse?: string | null;
+}
+
+interface Product {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    stock: number;
+    images: string[];
+    categoryId: string;
+    category?: Category;
+    gender: string;
+    isOnSale: boolean;
+    salePercentage: number;
+    saleEndDate?: string | Date;
+    reviews: Review[];
+}
+
+interface UserSession {
+    id: string;
+    email: string;
+    name?: string | null;
+}
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
     // Unwrap params
     const { id } = use(params);
-    const router = useRouter();
 
-    const [product, setProduct] = useState<any>(null);
-    const [similarProducts, setSimilarProducts] = useState<any[]>([]);
+    const [product, setProduct] = useState<Product | null>(null);
+    const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<UserSession | null>(null);
 
     // Interaction State
     const [quantity, setQuantity] = useState(1);
@@ -45,11 +82,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             ]);
 
             if (productRes.success) {
-                setProduct(productRes.product);
-                setSimilarProducts(productRes.similar || []);
+                setProduct(productRes.product as unknown as Product);
+                setSimilarProducts(productRes.similar as unknown as Product[] || []);
                 setIsInWishlist(productRes.isWishlisted || false);
             }
-            setUser(session);
+            setUser(session as UserSession | null);
             setLoading(false);
         };
         loadData();
@@ -120,7 +157,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         if (res.success) {
             // Refresh product data to see new review
             const updated = await getProductDetails(id);
-            if (updated.success) setProduct(updated.product);
+            if (updated.success) setProduct(updated.product as unknown as Product);
             setReviewComment('');
             setReviewRating(5);
         }
@@ -128,7 +165,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     };
 
     if (loading) return <Loading text="Curating Product Details..." />;
-    if (!product) return <div className="min-h-screen pt-32 text-center text-neutral-500 font-serif">Product not found. <Link href="/shop" className="underline hover:text-[#c6a87c]">Return to Collection</Link></div>;
+    if (!product) return <div className="min-h-screen pt-32 text-center text-neutral-500 font-serif">Product not found. <Link href="/shop" className="underline hover:text-primary">Return to Collection</Link></div>;
 
     const outOfStock = product.stock <= 0;
 
@@ -137,30 +174,36 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <Navbar />
             <div className="pt-28 pb-16">
                 <div className="container mx-auto px-4 max-w-6xl">
-                    <Link href="/shop" className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-bold text-neutral-400 hover:text-[#c6a87c] mb-12 transition-colors">
+                    <Link href="/shop" className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-bold text-neutral-400 hover:text-primary mb-12 transition-colors">
                         <ArrowLeft size={14} /> Back to Collection
                     </Link>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-16 mb-20 items-start">
                         {/* Image Section - Sticky */}
                         <div className="space-y-12 md:sticky md:top-28 h-fit w-full max-w-md mx-auto md:mx-0 md:ml-auto">
-                            <div className="aspect-square bg-[#f4f1ea] overflow-hidden relative border border-neutral-200/60 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]">
+                            <div className="aspect-square bg-surface-highlight overflow-hidden relative border border-neutral-200/60 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]">
                                 {product.images[0] ? (
-                                    <motion.img
+                                    <motion.div
                                         id="product-image-main"
                                         initial={{ scale: 1.1, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
                                         transition={{ duration: 1, ease: "easeOut" }}
-                                        src={product.images[0]}
-                                        alt={product.name}
-                                        className="w-full h-full object-cover"
-                                    />
+                                        className="w-full h-full relative"
+                                    >
+                                        <Image
+                                            src={product.images[0]}
+                                            alt={product.name}
+                                            fill
+                                            priority
+                                            className="object-cover"
+                                        />
+                                    </motion.div>
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-neutral-300 font-serif italic text-4xl">ELARA</div>
                                 )}
                                 {outOfStock && (
                                     <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
-                                        <span className="bg-[#1a1a1a] text-white px-6 py-3 text-[10px] uppercase tracking-[0.2em] font-bold">Sold Out</span>
+                                        <span className="bg-foreground text-white px-6 py-3 text-[10px] uppercase tracking-[0.2em] font-bold">Sold Out</span>
                                     </div>
                                 )}
                             </div>
@@ -168,19 +211,19 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                             {/* Additional Details to Sidebar to fill space */}
                             <div className="hidden md:grid grid-cols-2 gap-6 pt-4 border-t border-neutral-100">
                                 <div className="space-y-2">
-                                    <span className="text-[10px] font-bold text-[#c6a87c] uppercase tracking-widest block">Longevity</span>
+                                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest block">Longevity</span>
                                     <p className="text-sm text-neutral-600 font-serif italic">10-12 Hours</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <span className="text-[10px] font-bold text-[#c6a87c] uppercase tracking-widest block">Sillage</span>
+                                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest block">Sillage</span>
                                     <p className="text-sm text-neutral-600 font-serif italic">Moderate to Heavy</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <span className="text-[10px] font-bold text-[#c6a87c] uppercase tracking-widest block">Concentration</span>
+                                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest block">Concentration</span>
                                     <p className="text-sm text-neutral-600 font-serif italic">Eau de Parfum</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <span className="text-[10px] font-bold text-[#c6a87c] uppercase tracking-widest block">Season</span>
+                                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest block">Season</span>
                                     <p className="text-sm text-neutral-600 font-serif italic">All Seasons</p>
                                 </div>
                             </div>
@@ -194,8 +237,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                 transition={{ duration: 0.8, delay: 0.2 }}
                             >
                                 <div className="flex items-center gap-4 mb-4">
-                                    <div className="h-px w-8 bg-[#c6a87c]" />
-                                    <span className="text-[10px] font-bold tracking-[0.3em] text-[#c6a87c] uppercase">{product.category?.name || 'Fragrance'} • {product.gender}</span>
+                                    <div className="h-px w-8 bg-primary" />
+                                    <span className="text-[10px] font-bold tracking-[0.3em] text-primary uppercase">{product.category?.name || 'Fragrance'} • {product.gender}</span>
                                 </div>
 
                                 <h1 className="font-serif text-5xl md:text-6xl text-neutral-900 mb-6 leading-[0.9]">{product.name}</h1>
@@ -235,12 +278,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                 <div className="flex items-center gap-3 mb-10">
                                     <div className="flex gap-1">
                                         {[1, 2, 3, 4, 5].map((star) => {
-                                            const avgRating = product.reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / (product.reviews.length || 1);
+                                            const avgRating = product.reviews.reduce((sum, r) => sum + r.rating, 0) / (product.reviews.length || 1);
                                             return (
                                                 <Star
                                                     key={star}
                                                     size={14}
-                                                    className={star <= Math.round(avgRating) && product.reviews.length > 0 ? 'fill-[#c6a87c] text-[#c6a87c]' : 'text-neutral-200'}
+                                                    className={star <= Math.round(avgRating) && product.reviews.length > 0 ? 'fill-primary text-primary' : 'text-neutral-200'}
                                                 />
                                             );
                                         })}
@@ -274,7 +317,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                             <button
                                                 onClick={handleAddToCart}
                                                 disabled={outOfStock || addingToCart}
-                                                className="flex-1 bg-[#1a1a1a] text-white h-14 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs hover:bg-[#c6a87c] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-colors group"
+                                                className="flex-1 bg-foreground text-white h-14 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-colors group"
                                             >
                                                 {addingToCart ? <Loader2 className="animate-spin" size={16} /> : <ShoppingBag size={16} className="group-hover:-translate-y-0.5 transition-transform" />}
                                                 {outOfStock ? 'Out of Stock' : 'Add to Cart'}
@@ -282,17 +325,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                             <button
                                                 onClick={handleWishlist}
                                                 disabled={wishlistLoading}
-                                                className={`w-14 h-14 border border-neutral-200 flex items-center justify-center transition-all ${isInWishlist ? 'bg-red-50 border-red-200 text-red-500' : 'hover:border-[#c6a87c] hover:text-[#c6a87c] text-neutral-400'}`}
+                                                className={`w-14 h-14 border border-neutral-200 flex items-center justify-center transition-all ${isInWishlist ? 'bg-red-50 border-red-200 text-red-500' : 'hover:border-primary hover:text-primary text-neutral-400'}`}
                                             >
                                                 {wishlistLoading ? <Loader2 className="animate-spin" size={18} /> : <Heart size={20} className={isInWishlist ? "fill-red-500" : ""} />}
                                             </button>
                                         </div>
                                         {user ? (
-                                            <Link href="/cart" className="w-full py-4 text-center border-b border-neutral-200 text-neutral-400 font-bold uppercase tracking-[0.2em] text-[10px] hover:text-[#c6a87c] hover:border-[#c6a87c] transition-all flex items-center justify-center gap-2 group">
+                                            <Link href="/cart" className="w-full py-4 text-center border-b border-neutral-200 text-neutral-400 font-bold uppercase tracking-[0.2em] text-[10px] hover:text-primary hover:border-primary transition-all flex items-center justify-center gap-2 group">
                                                 View Cart <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                                             </Link>
                                         ) : (
-                                            <button onClick={() => setShowLoginModal(true)} className="w-full py-4 text-center border-b border-neutral-200 text-neutral-400 font-bold uppercase tracking-[0.2em] text-[10px] hover:text-[#c6a87c] hover:border-[#c6a87c] transition-all flex items-center justify-center gap-2 group">
+                                            <button onClick={() => setShowLoginModal(true)} className="w-full py-4 text-center border-b border-neutral-200 text-neutral-400 font-bold uppercase tracking-[0.2em] text-[10px] hover:text-primary hover:border-primary transition-all flex items-center justify-center gap-2 group">
                                                 View Cart <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                                             </button>
                                         )}
@@ -308,7 +351,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                         <div className="text-center mb-16">
                             <h3 className="font-serif text-4xl text-neutral-900 mb-4">Olfactory Notes & Reviews</h3>
                             <div className="flex items-center justify-center gap-2 mb-2">
-                                <span className="text-4xl font-serif text-[#c6a87c]">{product.reviews.length > 0 ? (product.reviews.reduce((a: any, b: any) => a + b.rating, 0) / product.reviews.length).toFixed(1) : '—'}</span>
+                                <span className="text-4xl font-serif text-primary">{product.reviews.length > 0 ? (product.reviews.reduce((a, b) => a + b.rating, 0) / product.reviews.length).toFixed(1) : '—'}</span>
                                 <span className="text-lg text-neutral-300 font-light">/ 5.0</span>
                             </div>
                             <p className="text-xs uppercase tracking-[0.2em] text-neutral-400">Based on {product.reviews.length} Customer Experiences</p>
@@ -317,7 +360,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
                             {/* Write Review Column */}
                             <div className="md:col-span-4">
-                                <div className="bg-[#faf9f6]/80 p-8 sticky top-32">
+                                <div className="bg-surface/80 p-8 sticky top-32">
                                     <h4 className="font-serif text-xl text-neutral-900 mb-6">Share Your Experience</h4>
                                     <p className="text-sm text-neutral-500 mb-8 font-light leading-relaxed">
                                         Your scent journey matters to us. Share your thoughts on the longevity, sillage, and overall impression of this fragrance.
@@ -334,7 +377,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                                 >
                                                     <Star
                                                         size={24}
-                                                        className={star <= reviewRating ? "text-[#c6a87c] fill-[#c6a87c]" : "text-neutral-200"}
+                                                        className={star <= reviewRating ? "text-primary fill-primary" : "text-neutral-200"}
                                                     />
                                                 </button>
                                             ))}
@@ -344,12 +387,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                             value={reviewComment}
                                             onChange={e => setReviewComment(e.target.value)}
                                             placeholder="Write your review here..."
-                                            className="w-full p-4 text-sm bg-white border border-neutral-200 mb-6 focus:outline-none focus:border-[#c6a87c] placeholder:text-neutral-400 font-light resize-y min-h-[140px]"
+                                            className="w-full p-4 text-sm bg-white border border-neutral-200 mb-6 focus:outline-none focus:border-primary placeholder:text-neutral-400 font-light resize-y min-h-[140px]"
                                         />
                                         <button
                                             disabled={submittingReview}
                                             type="submit"
-                                            className="w-full text-xs uppercase font-bold tracking-[0.2em] bg-[#1a1a1a] text-white border border-[#1a1a1a] px-8 py-4 hover:bg-[#c6a87c] hover:border-[#c6a87c] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full text-xs uppercase font-bold tracking-[0.2em] bg-foreground text-white border border-foreground px-8 py-4 hover:bg-primary hover:border-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {submittingReview ? 'Publishing...' : 'Publish Review'}
                                         </button>
@@ -365,11 +408,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                         <p className="text-xs uppercase tracking-widest text-neutral-300">Be the first to review</p>
                                     </div>
                                 ) : (
-                                    product.reviews.map((review: any) => (
+                                    product.reviews.map((review) => (
                                         <div key={review.id} className="p-8 border border-neutral-100 hover:border-neutral-200 transition-colors bg-white group">
                                             <div className="flex items-start justify-between mb-6">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 bg-[#f4f1ea] rounded-full flex items-center justify-center text-[#c6a87c] font-serif font-bold text-lg">
+                                                    <div className="w-10 h-10 bg-surface-highlight rounded-full flex items-center justify-center text-primary font-serif font-bold text-lg">
                                                         {(review.user.name || 'C').charAt(0)}
                                                     </div>
                                                     <div>
@@ -379,7 +422,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                                                 <Star
                                                                     key={i}
                                                                     size={10}
-                                                                    className={i < review.rating ? "text-[#c6a87c] fill-[#c6a87c]" : "text-neutral-200"}
+                                                                    className={i < review.rating ? "text-primary fill-primary" : "text-neutral-200"}
                                                                 />
                                                             ))}
                                                         </div>
@@ -391,9 +434,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
                                             {/* Admin Response */}
                                             {review.adminResponse && (
-                                                <div className="mt-8 ml-14 pl-6 border-l border-[#c6a87c]/30 py-2">
+                                                <div className="mt-8 ml-14 pl-6 border-l border-primary/30 py-2">
                                                     <div className="flex items-center gap-2 mb-3">
-                                                        <span className="text-[10px] font-bold text-[#c6a87c] uppercase tracking-widest">Elara Atelier</span>
+                                                        <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Elara Atelier</span>
                                                     </div>
                                                     <p className="text-sm text-neutral-500 italic font-serif leading-relaxed">{review.adminResponse}</p>
                                                 </div>
@@ -426,34 +469,46 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                             className="group flex flex-col h-full"
                                         >
                                             {/* Image Container */}
-                                            <div className="relative aspect-[4/5] overflow-hidden bg-white mb-4 md:mb-6 border border-neutral-200/60 transition-all duration-500 group-hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] rounded-sm">
+                                            <div className="relative aspect-4/5 overflow-hidden bg-white mb-4 md:mb-6 border border-neutral-200/60 transition-all duration-500 group-hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] rounded-sm">
                                                 <Link href={`/shop/${sim.id}`} className="block w-full h-full">
                                                     {/* Primary Image */}
                                                     {sim.images[0] ? (
-                                                        <img
-                                                            src={sim.images[0]}
-                                                            alt={sim.name}
-                                                            className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-105 group-hover:opacity-0"
-                                                        />
+                                                        <div className="absolute inset-0 w-full h-full group-hover:opacity-0 transition-opacity duration-700">
+                                                            <Image
+                                                                src={sim.images[0]}
+                                                                alt={sim.name}
+                                                                fill
+                                                                sizes="(max-width: 768px) 50vw, 25vw"
+                                                                className="object-cover transition-all duration-700 ease-out group-hover:scale-105"
+                                                            />
+                                                        </div>
                                                     ) : (
-                                                        <div className="absolute inset-0 w-full h-full bg-[#f4f1ea] flex items-center justify-center text-neutral-300 font-serif italic text-3xl">
+                                                        <div className="absolute inset-0 w-full h-full bg-surface-highlight flex items-center justify-center text-neutral-300 font-serif italic text-3xl">
                                                             Elara
                                                         </div>
                                                     )}
 
                                                     {/* Secondary Image (Hover) */}
                                                     {sim.images[1] ? (
-                                                        <img
-                                                            src={sim.images[1]}
-                                                            alt={sim.name}
-                                                            className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out opacity-0 group-hover:opacity-100 group-hover:scale-105"
-                                                        />
+                                                        <div className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out group-hover:scale-105">
+                                                            <Image
+                                                                src={sim.images[1]}
+                                                                alt={sim.name}
+                                                                fill
+                                                                sizes="(max-width: 768px) 50vw, 25vw"
+                                                                className="object-cover"
+                                                            />
+                                                        </div>
                                                     ) : (
-                                                        <img
-                                                            src={sim.images[0]}
-                                                            alt={sim.name}
-                                                            className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out opacity-0 group-hover:opacity-100 group-hover:scale-105"
-                                                        />
+                                                        <div className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out group-hover:scale-105">
+                                                            <Image
+                                                                src={sim.images[0]}
+                                                                alt={sim.name}
+                                                                fill
+                                                                sizes="(max-width: 768px) 50vw, 25vw"
+                                                                className="object-cover"
+                                                            />
+                                                        </div>
                                                     )}
                                                 </Link>
 
@@ -496,11 +551,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                             {/* Card Content */}
                                             <div className="flex flex-col flex-1 pl-1">
                                                 {/* Category */}
-                                                <p className="text-[10px] text-[#c6a87c] uppercase tracking-[0.25em] font-bold mb-2">
+                                                <p className="text-[10px] text-primary uppercase tracking-[0.25em] font-bold mb-2">
                                                     {sim.category?.name || 'Collection'}
                                                 </p>
 
-                                                <Link href={`/shop/${sim.id}`} className="group-hover:text-[#c6a87c] transition-colors">
+                                                <Link href={`/shop/${sim.id}`} className="group-hover:text-primary transition-colors">
                                                     <h3 className="font-serif text-sm md:text-xl text-neutral-900 leading-tight mb-2">
                                                         {sim.name}
                                                     </h3>
@@ -536,15 +591,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                                                                 const btn = e.currentTarget;
                                                                 const originalHTML = btn.innerHTML;
                                                                 btn.innerHTML = '<span class="flex items-center gap-2">Added</span>';
-                                                                btn.classList.add('bg-[#1a1a1a]', 'text-white', 'border-[#1a1a1a]');
+                                                                btn.classList.add('bg-foreground', 'text-white', 'border-foreground');
                                                                 setTimeout(() => {
                                                                     btn.innerHTML = originalHTML;
-                                                                    btn.classList.remove('bg-[#1a1a1a]', 'text-white', 'border-[#1a1a1a]');
+                                                                    btn.classList.remove('bg-foreground', 'text-white', 'border-foreground');
                                                                 }, 2000);
                                                             }
                                                         }}
                                                         disabled={sim.stock <= 0}
-                                                        className="w-full py-3 border border-neutral-300 text-neutral-900 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] hover:border-[#c6a87c] hover:text-[#c6a87c] transition-all flex items-center justify-center gap-2 group/btn"
+                                                        className="w-full py-3 border border-neutral-300 text-neutral-900 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2 group/btn"
                                                     >
                                                         {sim.stock > 0 ? 'Add to Cart' : 'Unavailable'}
                                                     </button>
@@ -614,9 +669,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                         initial={{ opacity: 0, y: 50 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
-                        className="fixed bottom-8 right-8 z-50 bg-[#1a1a1a] text-white px-8 py-4 flex items-center gap-4 shadow-2xl"
+                        className="fixed bottom-8 right-8 z-50 bg-foreground text-white px-8 py-4 flex items-center gap-4 shadow-2xl"
                     >
-                        <div className="w-8 h-8 rounded-full bg-[#c6a87c] flex items-center justify-center text-black">
+                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black">
                             <ShoppingBag size={14} fill="currentColor" />
                         </div>
                         <div>
@@ -629,13 +684,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
             {/* Fly Animation Image */}
             {flyAnimation && product?.images[0] && (
-                <motion.img
-                    src={product.images[0]}
+                <motion.div
                     initial={{
                         position: 'fixed',
                         left: flyAnimation.start.x,
                         top: flyAnimation.start.y,
-                        width: 400, // Approximate starting width
+                        width: 400,
                         opacity: 1,
                         zIndex: 100,
                         borderRadius: '0%'
@@ -649,8 +703,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                         borderRadius: '50%'
                     }}
                     transition={{ duration: 0.8, ease: "easeInOut" }}
-                    className="pointer-events-none object-cover shadow-xl"
-                />
+                    className="pointer-events-none overflow-hidden shadow-xl"
+                >
+                    <Image
+                        src={product.images[0]}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                    />
+                </motion.div>
             )}
         </div>
     );

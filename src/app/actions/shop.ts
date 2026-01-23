@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 import { sendEmail } from "@/lib/email";
 
+import { Gender, Prisma } from "@prisma/client";
+
 export async function getShopProducts(params?: {
     categoryId?: string,
     gender?: string,
@@ -19,10 +21,20 @@ export async function getShopProducts(params?: {
         const limit = params?.limit || 9;
         const skip = (page - 1) * limit;
 
-        const where: any = { isArchived: false };
+        const where: {
+            isArchived: boolean;
+            categoryId?: string;
+            gender?: Gender;
+            OR?: { [key: string]: { contains: string; mode: 'insensitive' } }[];
+            price?: { gte?: number; lte?: number };
+        } = { isArchived: false };
+
+        if (params?.gender && ['MEN', 'WOMEN', 'UNISEX'].includes(params.gender)) {
+            where.gender = params.gender as Gender;
+        }
 
         if (params?.categoryId) where.categoryId = params.categoryId;
-        if (params?.gender && params.gender !== 'ALL') where.gender = params.gender;
+
         if (params?.search) {
             where.OR = [
                 { name: { contains: params.search, mode: 'insensitive' } },
@@ -49,7 +61,6 @@ export async function getShopProducts(params?: {
             take: limit
         });
 
-        // Fetch user session for wishlist status
         const session = await getSession();
         let wishlistedProductIds = new Set<string>();
 
@@ -63,18 +74,18 @@ export async function getShopProducts(params?: {
             }
         }
 
-        // Calculate average rating for each product and add wishlist status
         const productsWithRatings = products.map(product => {
-            const avgRating = product.reviews.length > 0
-                ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
+            const reviews = (product as unknown as { reviews: { rating: number }[] }).reviews || [];
+            const avgRating = reviews.length > 0
+                ? reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / reviews.length
                 : 0;
 
             return {
                 ...product,
                 price: Number(product.price),
                 averageRating: avgRating,
-                reviewCount: product.reviews.length,
-                reviews: undefined, // Remove reviews array from response
+                reviewCount: reviews.length,
+                reviews: undefined,
                 isInWishlist: wishlistedProductIds.has(product.id)
             };
         });
@@ -146,7 +157,7 @@ export async function addToCartAction(productId: string, quantity: number) {
         const userId = session.userId;
 
         // Find or create cart
-        const [existingCart, user] = await Promise.all([
+        const [existingCart] = await Promise.all([
             prisma.cart.findUnique({ where: { userId } }),
             prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } })
         ]);
@@ -174,7 +185,7 @@ export async function addToCartAction(productId: string, quantity: number) {
 
         revalidatePath('/cart');
         return { success: true };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to add to cart" };
     }
 }
@@ -203,7 +214,7 @@ export async function toggleWishlistAction(productId: string) {
             });
             return { success: true, added: true };
         }
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to update wishlist" };
     }
 }
@@ -219,7 +230,7 @@ export async function submitReviewAction(productId: string, rating: number, comm
         });
         revalidatePath(`/shop/${productId}`);
         return { success: true };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to submit review" };
     }
 }
@@ -234,13 +245,31 @@ export async function getCartAction() {
             where: { userId },
             include: {
                 items: {
-                    include: { product: true },
-                    orderBy: { id: 'asc' } // Changed from createdAt to id (stable sort) as CartItem might not have createdAt
+                    include: {
+                        product: {
+                            include: { category: true }
+                        }
+                    },
+                    orderBy: { id: 'asc' }
                 }
             }
         });
-        return { success: true, cart };
-    } catch (error) {
+
+        if (!cart) return { success: true, cart: null };
+
+        const formattedCart = {
+            ...cart,
+            items: cart.items.map(item => ({
+                ...item,
+                product: {
+                    ...item.product,
+                    price: Number(item.product.price)
+                }
+            }))
+        };
+
+        return { success: true, cart: formattedCart };
+    } catch {
         return { success: false, error: "Failed to load cart" };
     }
 }
@@ -257,15 +286,15 @@ export async function updateCartItemAction(itemId: string, quantity: number) {
         }
         revalidatePath('/cart');
         return { success: true };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to update cart" };
     }
 }
 
 export async function placeOrderAction(
     total: number,
-    items: any[],
-    deliveryAddress: any,
+    items: { productId: string, quantity: number, product?: { price: number, isOnSale: boolean, salePercentage: number | null, name: string } }[],
+    deliveryAddress: { tag: string, street: string, city: string, state: string, zip: string, country: string, phone: string },
     couponCode?: string,
     subtotal?: number,
     discount?: number
@@ -385,7 +414,7 @@ export async function placeOrderAction(
                             price = price * (1 - (item.product.salePercentage || 0) / 100);
                         }
                         return {
-                            name: item.product?.name || item.productName || 'Product',
+                            name: item.product?.name || 'Product',
                             quantity: item.quantity,
                             price: price
                         };
@@ -404,7 +433,7 @@ export async function placeOrderAction(
     }
 }
 
-export async function updateOrderAddressAction(orderId: string, newAddress: any) {
+export async function updateOrderAddressAction(orderId: string, newAddress: unknown) {
     try {
         const session = await getSession();
         if (!session) return { success: false, error: "Unauthorized" };
@@ -421,12 +450,12 @@ export async function updateOrderAddressAction(orderId: string, newAddress: any)
 
         await prisma.order.update({
             where: { id: orderId },
-            data: { deliveryAddress: newAddress }
+            data: { deliveryAddress: newAddress as Prisma.InputJsonValue }
         });
         revalidatePath('/orders');
         revalidatePath('/admin/orders');
         return { success: true };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to update order address" };
     }
 }
@@ -455,9 +484,17 @@ export async function getWishlistAction(page: number = 1, limit: number = 9) {
 
         if (!wishlist) return { success: true, items: [], totalCount: 0, totalPages: 0 };
 
+        const formattedItems = wishlist.items.map(item => ({
+            ...item,
+            product: {
+                ...item.product,
+                price: Number(item.product.price)
+            }
+        }));
+
         return {
             success: true,
-            items: wishlist.items,
+            items: formattedItems,
             totalCount: wishlist._count.items,
             totalPages: Math.ceil(wishlist._count.items / limit)
         };
@@ -486,7 +523,7 @@ export async function getUserOrdersAction() {
             orderBy: { createdAt: 'desc' }
         });
         return { success: true, orders };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to fetch orders" };
     }
 }

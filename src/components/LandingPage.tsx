@@ -5,9 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValue, useMotionTemplate } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
-import { ArrowRight, Star, Sparkles, Droplets, Flower2, ShoppingBag, Clock, FlaskConical, Fingerprint, X, User } from "lucide-react";
+import { ArrowRight, ShoppingBag, Clock, FlaskConical, X, User } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { checkUserSession } from "@/app/actions/check-session";
 
 interface LandingPageProps {
     categories: {
@@ -28,15 +27,10 @@ export default function LandingPage({ categories, bestSellers }: LandingPageProp
     const containerRef = useRef(null);
     const horizontalRef = useRef(null);
     const router = useRouter();
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
 
     useEffect(() => {
-        const checkSession = async () => {
-            const hasSession = await checkUserSession();
-            setIsLoggedIn(hasSession);
-        };
-        checkSession();
+        // Session check logic removed as isLoggedIn is unused
     }, []);
 
 
@@ -48,7 +42,6 @@ export default function LandingPage({ categories, bestSellers }: LandingPageProp
     const handleCollectionClick = (categoryId: string) => {
         router.push(`/shop?category=${categoryId}`);
     };
-    const [isProcessing, setIsProcessing] = useState(false);
     const [showStudioModal, setShowStudioModal] = useState(false);
 
     // Mouse position for 3D card effect (Centered)
@@ -92,9 +85,7 @@ export default function LandingPage({ categories, bestSellers }: LandingPageProp
     const bottleY = useTransform(smoothProgress, [0, 0.2], ["0%", "20%"]);
 
     // Text "ELARA" starts behind, massive, then scales down and reveals full opacity
-    const titleScale = useTransform(smoothProgress, [0, 0.3], [1.5, 1]);
     const titleY = useTransform(smoothProgress, [0, 0.3], ["-10%", "-50%"]);
-    const titleOpacity = useTransform(smoothProgress, [0, 0.1], [0.5, 1]);
 
     // Content layers moving at different speeds (Parallax)
     const layer1Y = useTransform(smoothProgress, [0.05, 0.3], ["50%", "0%"]);
@@ -247,7 +238,7 @@ export default function LandingPage({ categories, bestSellers }: LandingPageProp
                     <div className="bg-white/80 backdrop-blur-xl p-6 md:p-12 w-full max-w-lg shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] border border-white/50 rounded-sm">
                         <h2 className="text-3xl md:text-4xl font-serif mb-4 md:mb-6 text-neutral-900">Captured Elegance</h2>
                         <p className="text-neutral-600 text-base md:text-lg leading-relaxed mb-6 md:mb-8">
-                            Elara isn't just a fragrance; it's a statement. Born from the intersection of nature's purity and the cosmos' mystery. Our signature scent encapsulates the feeling of golden hour sunlight touching pristine glass.
+                            Elara isn&apos;t just a fragrance; it&apos;s a statement. Born from the intersection of nature&apos;s purity and the cosmos&apos; mystery. Our signature scent encapsulates the feeling of golden hour sunlight touching pristine glass.
                         </p>
                         <Link href="/shop" className="inline-flex items-center gap-2 text-xs font-bold tracking-[0.2em] uppercase border-b border-neutral-900 pb-1 hover:text-[#c6a87c] hover:border-[#c6a87c] transition-colors">
                             Explore The Shop <ArrowRight size={14} />
@@ -481,7 +472,7 @@ export default function LandingPage({ categories, bestSellers }: LandingPageProp
                                     <span className="text-2xl font-serif italic text-[#c6a87c] mb-1 block">1985</span>
                                     <h4 className="text-xl md:text-2xl font-serif mb-2">The First Drop</h4>
                                     <p className="text-neutral-500 text-sm leading-relaxed">
-                                        In a small attic in Grasse, the first formula for 'Lumina' was penned by candlelight.
+                                        In a small attic in Grasse, the first formula for &apos;Lumina&apos; was penned by candlelight.
                                     </p>
                                 </div>
                             </div>
@@ -566,7 +557,7 @@ export default function LandingPage({ categories, bestSellers }: LandingPageProp
                                     </p>
                                     <div className="relative py-2">
                                         <p className="text-lg md:text-xl text-neutral-800 font-serif italic leading-relaxed">
-                                            "We didn't expand for the sake of size. We expanded because the world needed more beauty."
+                                            &quot;We didn&apos;t expand for the sake of size. We expanded because the world needed more beauty.&quot;
                                         </p>
                                         <span className="block text-right mt-3 font-serif italic text-[#c6a87c] text-base opacity-80 decoration-slice">
                                             - Eleanor V., Founder

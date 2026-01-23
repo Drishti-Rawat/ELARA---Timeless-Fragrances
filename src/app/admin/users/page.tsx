@@ -1,23 +1,36 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getUsersAction } from '@/app/actions/admin';
 import { Search } from 'lucide-react';
 
+interface User {
+    id: string;
+    name: string | null;
+    email: string;
+    createdAt: string | Date;
+    _count?: {
+        orders: number;
+    };
+}
+
 export default function UsersPage() {
-    const [users, setUsers] = useState<any[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        const fetchUsers = async () => {
-            setLoading(true);
-            const res = await getUsersAction();
-            if (res.success) setUsers(res.users || []);
-            setLoading(false);
-        };
-        fetchUsers();
+    const fetchUsers = useCallback(async () => {
+        setLoading(true);
+        const res = await getUsersAction();
+        if (res.success && res.users) setUsers(res.users as User[]);
+        setLoading(false);
     }, []);
+
+    useEffect(() => {
+        (async () => {
+            await fetchUsers();
+        })();
+    }, [fetchUsers]);
 
     const filteredUsers = users.filter(user =>
         (user.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -68,8 +81,8 @@ export default function UsersPage() {
                                             <td className="px-6 py-4 text-gray-500">{user.email}</td>
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isCustomer
-                                                        ? 'bg-emerald-100 text-emerald-800'
-                                                        : 'bg-gray-100 text-gray-600'
+                                                    ? 'bg-emerald-100 text-emerald-800'
+                                                    : 'bg-gray-100 text-gray-600'
                                                     }`}>
                                                     {isCustomer ? 'Customer' : 'User'}
                                                 </span>
