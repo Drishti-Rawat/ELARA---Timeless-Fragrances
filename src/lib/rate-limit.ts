@@ -6,10 +6,10 @@ import { Ratelimit } from '@upstash/ratelimit';
  * Works with both Vercel KV (if env vars mapped) and standard Upstash Redis.
  */
 
-// Create Redis client (configured to use project-specific ELARA prefixed variables)
+// Create Redis client (configured to use project-specific elara prefixed variables)
 const redis = new Redis({
-    url: process.env.ELARA_KV_REST_API_URL || '',
-    token: process.env.ELARA_KV_REST_API_TOKEN || '',
+    url: process.env.elara_KV_REST_API_URL || '',
+    token: process.env.elara_KV_REST_API_TOKEN || '',
 });
 
 // OTP Email Limiter: 3 requests per 10 minutes
